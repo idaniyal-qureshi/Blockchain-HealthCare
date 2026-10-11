@@ -4,14 +4,6 @@
 
 Final Year Project, FAST-NUCES.
 
-| Team member | Roll no. | Focus |
-|---|---|---|
-| Daniyal Qureshi | 23I-0645 | Privacy-preserving / zero-knowledge access control, security evaluation |
-| Zia Ul Baqa | 23I-0606 | Distributed consensus, network realism, IoMT data pipeline and fault tolerance |
-| Hannan Abid | 23I-0713 | Post-quantum cryptography, secure data storage |
-
-**Supervisor:** Dr. Noshina Tariq
-
 ## Problem
 
 Existing simulation-based blockchain architectures for internet hospital systems report strong performance, but their security, privacy,
