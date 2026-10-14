@@ -1,3 +1,4 @@
 *.ipynb
 __pycache__/
 code/v2_components/output/
+.venv/

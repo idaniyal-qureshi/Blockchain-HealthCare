@@ -143,7 +143,7 @@ def run():
     def g(p, n, col="lat"):
         s = cagg[(cagg.protocol == p) & (cagg.nodes == n)][col]; return float(s.iloc[0]) if len(s) else np.nan
     PB_1000 = "PBFT (extrapolated)"  # as in the paper
-    raft20 = cons[(cons.protocol == "Raft") & (cons.nodes == 20)]
+    #raft20 = cons[(cons.protocol == "Raft") & (cons.nodes == 20)]
     slope = np.polyfit(cagg[(cagg.protocol == "Raft") & (cagg.nodes >= 200)].nodes, cagg[(cagg.protocol == "Raft") & (cagg.nodes >= 200)].lat, 1)[0]
     RESULTS.update(pbft_sim_1000=g("PBFT (full-scale sim)", 1000), pbft_sim_tps=g("PBFT (full-scale sim)", 1000, "tps"), raft_1000=g("Raft", 1000), raft_fo=g("Raft (failover)", 1000), raft_cg=g("Raft (congestion)", 1000), pbft_1000=g(PB_1000, 1000),
                    hs_1000=g("HotStuff", 1000), tm_1000=g("Tendermint", 1000), raft_tps=g("Raft", 1000, "tps"), pbft_tps=g(PB_1000, 1000, "tps"),
@@ -168,7 +168,7 @@ def run():
     plt.savefig("fig06_raft_scaling.png", bbox_inches="tight"); plt.show()
     fig, ax = plt.subplots(figsize=(7, 4))                                  # Fig 12
     labs = ["Raft", PB_1000, "HotStuff", "Tendermint"]; vals = [g(p, 1000, "tps") for p in labs]
-    b = ax.bar([l.replace(" (extrapolated)", "\n(extrap.)") for l in labs], vals, color=["green", "red", "blue", "orange"]); ax.bar_label(b, fmt="%.1f")
+    b = ax.bar([name.replace(" (extrapolated)", "\n(extrap.)") for name in labs], vals, color=["green", "red", "blue", "orange"]); ax.bar_label(b, fmt="%.1f")
     ax.set_ylabel("Transactions per second"); ax.set_title(f"Throughput at 1000 nodes, block = {CFG['BLOCK_SIZE']} tx (cf. Fig 12)")
     plt.savefig("fig12_throughput.png", bbox_inches="tight"); plt.show()
 
