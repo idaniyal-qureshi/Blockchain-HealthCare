@@ -1,0 +1,15 @@
+line-length = 140
+
+[lint]
+select = ["E", "F"]
+ignore = [
+    "E401",   # multiple imports on one line
+    "E402",   # import not at top
+    "E501",   # line too long
+    "E701",   # multiple statements on one line (colon)
+    "E702",   # multiple statements on one line (semicolon)
+    "E731",   # lambda assignment
+]
+
+[lint.per-file-ignores]
+"common.py" = ["F401"]
