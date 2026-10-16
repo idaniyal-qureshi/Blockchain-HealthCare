@@ -65,7 +65,6 @@ CFG = dict(
     ETA_WINDOW=20,                 # Algorithm 2 fault estimate: moving window in time steps
     RETRY_K=3,                     # Algorithm 4 retry limit k, also the Fig 2 "retry if failed" limit
     AUTH_WINDOW_S=30.0,            # Sec 4.3.2 acceptable timestamp window
-    TOKEN_CHAIN_LEN=1000,          # one-time authorization tokens issued per consent (see access_control.py)
     HOP_DELAY_MS=1.0,              # synchronous constant network delay (paper: "constant-delay", value not given)
     SEND_COST_MS=0.01, PROC_COST_MS=0.04,   # per-message send / process CPU time at a node
     SIG_VERIFY_MS=0.05,            # extra per-vote cost where votes are signed (HotStuff, Tendermint)
