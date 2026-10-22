@@ -232,7 +232,7 @@ class TestPipelineAccessAndAudit(unittest.TestCase):
     """Sec 3.2 step 7 (access only if proof AND consensus succeed), Sec 4.3.2-4.3.3 (every decision logged on-chain)."""
 
     def test_access_outcomes(self):
-        lines = {l.split("->")[0].strip(): l.split("->")[1].strip() for l in Pipeline.get()["out"].splitlines() if "->" in l}
+        lines = {line.split("->")[0].strip(): line.split("->")[1].strip() for line in Pipeline.get()["out"].splitlines() if "->" in line}
         self.assertIn('"pid"', lines["Valid proof + policy"])
         self.assertIn('"pid"', lines["Valid, 2 corrupted transmissions"])
         self.assertEqual(lines["Wrong secret (other hospital)"], "DENIED")
