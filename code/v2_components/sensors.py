@@ -8,13 +8,19 @@
   → adaptive correction (Algorithm 2) → "retry if failed" (retransmission, up to k times) → hand-over to the crypto layer. Groups still unreliable after k retries are quarantined.
 * Benchmarked against no correction, mean, majority voting and a Kalman filter (Sec 6.9), over 5 runs.
 
-Library part: generate_truth ... sensor_accuracy (used again by blockchain.py).  Experiment part: run().
+* Edge data (Sec 3.2 steps 1-3): edge_records() turns the Fig 2 pipeline output into one record per patient per time step
+  (corrected value + the 3-5 readings that arrived and passed authentication). encryption.py encrypts these on each patient's edge device;
+  save_records_csv() keeps a plaintext reference copy so decrypted data can be checked.
+
+Library part: generate_truth ... sensor_accuracy (used again by blockchain.py), edge_records, save_records_csv.  Experiment part: run().
 """
-import os, time, hmac, struct
+import os, time, hmac, struct, json
 import numpy as np, pandas as pd, matplotlib.pyplot as plt
 from common import CFG, SEED, rng, ci95, fmt, display, RESULTS
 
 N_S = CFG["N_SENSORS"]
+EDGE_PATIENTS = 10           # ASSUMPTION: patients whose full sensor stream (N_STEPS records each) is handed to the edge devices for encryption
+EDGE_FAULT_RATE = 0.20       # ASSUMPTION: sensor fault rate of that data
 
 def generate_truth(n_pat, rng):
     # Eq 14/16: x*_i has no time index -> one true value per patient.  ASSUMPTION: x*_i ~ U(60, 100) (heart-rate range)
@@ -126,10 +132,34 @@ def fig2_pipeline(truth, fault_rate, rng, keys, authenticate=True):
         xn, kn = draw_readings(truth[pending], fault_rate, rng)
         x[pending], kind[pending] = xn, kn
         auth_ok[pending] = sensor_auth(xn, kn, pat[pending], stp[pending], attempt + 1, keys) if authenticate else ~np.isnan(xn)
-    return dict(est=out, retx=retx, quarantined=pending, cls=cls, det=det)
+    return dict(est=out, retx=retx, quarantined=pending, cls=cls, det=det, readings=np.where(auth_ok, x, np.nan))
 
 def sensor_accuracy(est, truth):                                       # Eq 16 (quarantined/missing outputs count as wrong)
     return float(np.mean(np.abs(est - truth) <= CFG["ACC_TOL"]) * 100)
+
+def edge_records(n_patients=EDGE_PATIENTS, fault_rate=EDGE_FAULT_RATE, n_steps=CFG["N_STEPS"], seed=SEED + 7):
+    """Sensor output that each patient's edge device encrypts (Sec 3.2 steps 1-3).
+    Runs the Fig 2 pipeline and returns {patient_id: [record, ...]}, one record per time step:
+        pid, step, t_s (seconds since start, 1 reading every 3 s), hr (corrected value, None if quarantined),
+        raw (the readings that arrived and passed authentication, usually 3-5 of the 5 sensors)."""
+    r = np.random.default_rng(seed)
+    truth = np.repeat(generate_truth(n_patients, r)[:, None], n_steps, axis=1)
+    keys = [[os.urandom(16) for _ in range(N_S)] for _ in range(n_patients)]
+    pipe = fig2_pipeline(truth, fault_rate, r, keys)
+    est, readings = pipe["est"], pipe["readings"]
+    out = {}
+    for p in range(n_patients):
+        out[p] = [dict(pid=p, step=t, t_s=t * CFG["READ_INTERVAL_S"],
+                       hr=None if np.isnan(est[p, t]) else round(float(est[p, t]), 2),
+                       raw=[round(float(v), 2) for v in readings[p, t] if not np.isnan(v)])
+                  for t in range(n_steps)]
+    return out
+
+def save_records_csv(records, path="sensor_records.csv"):
+    """Plaintext reference copy of the edge records (one row per patient per time step)."""
+    rows = [dict(rec, raw=json.dumps(rec["raw"])) for recs in records.values() for rec in recs]
+    pd.DataFrame(rows).to_csv(path, index=False)
+    return path
 
 
 def run():
