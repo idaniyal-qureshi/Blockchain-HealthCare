@@ -88,7 +88,7 @@ def run_pipeline(n_patients=40, steps=20, n_nodes=7, n_crashed=1, compromised=1,
     devices = [PatientDevice(f"patient-{i:04d}") for i in range(n_patients)]
     hospA, pol_tok, where = {}, {}, {}
     for dv in devices:
-        p, toks = dv.issue_token("read_ehr"); ac.enroll(dv.pseud, p); hospA[dv.pseud] = Requester("hospA", toks)
+        p, s = dv.issue_token("read_ehr"); ac.enroll(dv.pseud, "read_ehr", p); hospA[dv.pseud] = Requester("hospA", s)
         pol_tok[dv.pseud] = ps.define(dv, "hospA", "doctor", "EHR", "read", time.time() + 3600)
     flush_audit()
     # 3. encryption + data packaging: one record per patient per minute (20 readings)
@@ -98,7 +98,7 @@ def run_pipeline(n_patients=40, steps=20, n_nodes=7, n_crashed=1, compromised=1,
         rec = dict(pid=dv.pseud, hr=[round(float(v), 1) if np.isfinite(v) else None for v in vals])
         meta = dict(pseud=dv.pseud, ts=time.time(), alert=bool(np.any((vals[ok] < CFG["ALERT_RANGE"][0]) | (vals[ok] > CFG["ALERT_RANGE"][1]))),
                     retx=int(pipe["retx"][i].sum()), quarantined=int(pipe["quarantined"][i].sum()))
-        ct = scheme.encrypt(json.dumps(rec).encode()); p_b = ac.commit[dv.pseud]
+        ct = scheme.encrypt(json.dumps(rec).encode()); p_b = ac.commit[(dv.pseud, "read_ehr")]
         pending.append((ct, p_b, dict(meta, meta=meta, p_bytes=p_b, tag=tx_tag(ct, p_b, meta))))
     # 5-6. leader proposes, quorum commits (Eq 12 block = ciphertexts + proofs + metadata)
     for b in range(0, n_patients, 10):
@@ -110,15 +110,15 @@ def run_pipeline(n_patients=40, steps=20, n_nodes=7, n_crashed=1, compromised=1,
 
     # 4-7. access request: authorization proof (Alg 4) + patient policy (Eqs 8-10) + consensus -> decrypt
     def request_access(requester, dv, policy_token, resource="EHR", action="read", corrupt_first=0):
-        ok = requester.access(ac, dv.pseud, corrupt_first=corrupt_first) == 1
-        ok = ok and ps.check(dv.pseud, requester.name, policy_token, resource, action)
+        ok = requester.access(ac, dv.pseud, "read_ehr", corrupt_first=corrupt_first) == 1
+        ok = ok and ps.check(dv.pseud, policy_token, resource, action)
         flush_audit()                                                   # decision written to the ledger through consensus
         if not ok: return "DENIED"
         bi, j = where[dv.pseud]; return scheme.decrypt(chain.blocks[bi].ciphertexts[j]).decode()[:60] + "..."
     d3 = devices[3]
     print("Valid proof + policy               ->", request_access(hospA[d3.pseud], d3, pol_tok[d3.pseud]))
     print("Valid, 2 corrupted transmissions   ->", request_access(hospA[d3.pseud], d3, pol_tok[d3.pseud], corrupt_first=2))
-    print("Wrong secret (other hospital)      ->", request_access(Requester("hospB", [os.urandom(32)] * 3), d3, pol_tok[d3.pseud]))
+    print("Wrong secret (other hospital)      ->", request_access(Requester("hospB", os.urandom(32)), d3, pol_tok[d3.pseud]))
     print("Valid proof, write not permitted   ->", request_access(hospA[d3.pseud], d3, pol_tok[d3.pseud], action="write"))
     ps.revoke(d3, "hospA", "EHR"); flush_audit()
     print("After policy revocation            ->", request_access(hospA[d3.pseud], d3, pol_tok[d3.pseud]))

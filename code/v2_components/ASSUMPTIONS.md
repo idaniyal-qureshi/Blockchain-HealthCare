@@ -7,9 +7,11 @@ retry limit k = 3 · sensor HMAC tags truncated to 8 bytes · "mean smoothing" =
 
 **Crypto:** RSA-OAEP padding · mock pk/encapsulation padded to Kyber-768 sizes with SHAKE-256 · mock decapsulation uses only the seed.
 
-**Access control:** 30 s timestamp window · one-time hash-chain tokens (1000 per consent) · nonce/timestamp bound by HMAC keyed with the token ·
-pseudonym = truncated SHA-256 of the patient id · ledger keeps H(p), hashed entity id, R, a and t_e beside each policy (needed for Eq 10) ·
-"write" implies "read" · RBAC role table.
+**Access control (paper-faithful, see access_control.py `# GAP` tags):** 30 s timestamp window · retry limit k = 3 (Algorithm 4 gives no value) ·
+256-bit k_dev and k_s · pseudonym = truncated SHA-256 of the patient id, used as the ledger index for p · commitments kept per (patient, permission) ·
+nonce and timestamp are plain request fields (the paper gives no construction tying them to s') · token revocation rotates k_dev (Eq 5 is
+deterministic) · policy match = exact resource and access level, not expired · no check that the submitter is the policy's entity (the paper
+defines none) · identity leakage measured as sensitive values visible in plaintext · RBAC baseline = public role table with public events.
 
 **Consensus:** 1 ms constant hop delay · 0.01 ms send / 0.04 ms process CPU per message, 20% jitter · 0.05 ms signature check on HotStuff and
 Tendermint votes · failover = RequestVote round plus a 150-300 ms election timeout every 10 rounds · congestion = hop delay ×3 ·
@@ -24,8 +26,11 @@ baseline retransmits every anomalous reading group · Eq 13 evaluated at 20 node
 * Fault rates with (Sec 5.3) or without 15% (Table 2, figures) → all five.
 * Spoof amplitude "±15 or ±25" (Sec 5.2) vs "±15 to ±25" (Table 2) → fixed values, as Eq 2 says "fixed amplitude".
 * "3-of-5 median" vs "3-of-5 majority voting" (contribution 5) → median (Eq 1, Eq 15, Algorithm 1).
-* Eq 7 needs the token in clear, but Algorithm 4's text says no secret is transmitted → the token is revealed, so tokens are one-time (hash chain).
-* Eq 9 needs the verifier to compute HMAC(k_s, π), but k_s "never leaves the patient device" → ledger stores H(p); the requester presents p.
+* Eq 7 / Algorithm 4 need the token s' in clear, but Algorithm 4's text says no secret is transmitted → s' is sent (equations win); a captured s'
+  can be replayed with a fresh nonce, and the code shows this.
+* Eq 9 stores p = HMAC(k_s, π) on-chain and the submitted proof is matched against it → p itself is on the ledger, so a ledger reader can submit it.
+* Eq 10 needs e and t_e of every policy, but the prose says roles/identities are not disclosed → the verifier keeps the tuples π (equations win).
+* Table 2 says "Accept if H(s') = p under RBAC" → read as: the Eq 7 check plus the Eqs 8-10 policy check (which carries the role r).
 * "Memory usage" = Python memory (Sec 5.4, abstract) or encrypted-record size (Sec 6.7) → both reported.
 * The mock is said to keep IND-CPA security and to use "NIST-recommended primitives" (Sec 3.3); a key derived from public values cannot → noted, not fixed.
 * RSA decryption reported faster than encryption (Sec 6.5) and RSA times differ between Fig 7, Fig 8 and the text → measured values reported.
