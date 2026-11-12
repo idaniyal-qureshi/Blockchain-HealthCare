@@ -2,8 +2,10 @@
 
 access_control.py implements the paper's scheme exactly as written, including its weaknesses. These tests pin that behaviour:
   * paper elements  - each test names the equation / algorithm line / section it checks
-  * PAPER-FLAW      - attacks the paper's design lets through are asserted as ACCEPTED; if one starts failing, the
-                      access-control layer no longer matches the paper (a fix belongs in a separate module, not here)
+  * PAPER-FLAW      - security requirements the paper's design does NOT meet, written as the correct property (the attack
+                      must be rejected) and marked xfail(strict=True). They show as expected failures in CI. If one
+                      starts passing, CI fails: the base layer no longer matches the paper (fixes belong in a separate
+                      module, which reuses the same tests without the mark)
   * GAP choices     - values the paper does not give (k = 3, 30 s window, key rotation on revoke) are tested as implemented
 
 Run from the folder that holds access_control.py:
@@ -169,13 +171,15 @@ class TestFreshness:
         assert not ac.verify(bad, now=T0)
         assert not ac.verify(dict(bad, token=s), now=T0)      # same nonce, now with the right token
 
-    def test_PAPER_FLAW_captured_token_with_fresh_nonce_is_accepted(self, setup):
-        """The nonce/timestamp are not bound to s' (no construction in the paper), so an observer replays s'."""
+    @pytest.mark.xfail(strict=True, reason="PAPER-FLAW: s' is sent in clear and the nonce/timestamp are not bound to it "
+                                           "(Eq 7 vs Sec 4.3.2), so a captured token is replayable; to be fixed in the ZK module")
+    def test_captured_token_with_fresh_nonce_is_rejected(self, setup):
+        """Security requirement: an observer who captured one request must not be able to replay its token."""
         dev, ac, hosp, _, _ = setup
         captured = req_at(hosp, dev, T0)
         assert ac.verify(captured, now=T0)
         eavesdropper = AC.Requester("eavesdropper", captured["token"])
-        assert all(ac.verify(req_at(eavesdropper, dev, T0 + i), now=T0 + i) for i in range(10))
+        assert not any(ac.verify(req_at(eavesdropper, dev, T0 + i), now=T0 + i) for i in range(10))
 
 
 # ---------------------------------------------------------------- token revocation: Sec 4.3.2
@@ -267,11 +271,13 @@ class TestPolicies:
         assert [e["event"] for e in events[-2:]] == ["policy_allow", "policy_deny"]
         assert not any(PID in json.dumps(e) for e in events)
 
-    def test_PAPER_FLAW_commitment_copied_from_the_ledger_is_accepted(self, policy):
-        """Eq 9 stores p itself on-chain, and nothing checks who submits it."""
+    @pytest.mark.xfail(strict=True, reason="PAPER-FLAW: Eq 9 stores the policy token p itself on-chain and nothing checks "
+                                           "who submits it, so any ledger reader can use it; to be fixed in the ZK module")
+    def test_commitment_copied_from_the_ledger_is_rejected(self, policy):
+        """Security requirement: reading the public ledger must not give anyone a usable policy token."""
         dev, ps, _ = policy
         ledger_copy = ps.pol[dev.pseud][0]["p"]
-        assert ps.check(dev.pseud, ledger_copy, "EHR", "read", now=T0)
+        assert not ps.check(dev.pseud, ledger_copy, "EHR", "read", now=T0)
 
     def test_eq10_latest_policy_of_the_same_entity_governs(self, policy):
         dev, ps, p_ehr = policy
