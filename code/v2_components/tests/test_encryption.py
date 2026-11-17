@@ -3,19 +3,34 @@
 They only use the public interface (scheme.encrypt / scheme.decrypt and the store / fetch helpers) and run against every
 scheme returned by make_schemes(), so they stay the same if the algorithm underneath is changed."""
 import json
+import os
+import warnings
 
 import pytest
 from Crypto.Random import get_random_bytes
 
 from encryption import (
-    MockKyberHybrid, make_schemes, record_to_bytes, bytes_to_record,
-    encrypt_record, decrypt_record, encrypt_and_store, fetch_and_decrypt,
+    MockKyberHybrid, make_schemes, make_pqc_schemes, record_to_bytes, bytes_to_record,
+    encrypt_record, decrypt_record, encrypt_and_store, fetch_and_decrypt, KY_N, K1024_N,
 )
 from sensors import edge_records
 
-SCHEMES = make_schemes()                         # key generation once (RSA keygen is slow)
-OTHER_KEYS = make_schemes()                      # same algorithms, different key pairs
+
+def all_schemes():
+    """Paper baseline + real ML-KEM. Without liboqs only the baseline runs (a warning says so); REQUIRE_PQC=1 (set in CI) makes it an error."""
+    try:
+        return make_schemes() + make_pqc_schemes()
+    except ImportError:
+        if os.environ.get("REQUIRE_PQC") == "1":
+            raise
+        warnings.warn("liboqs not installed: real ML-KEM schemes are NOT being tested (pip install -r requirements-pqc.txt)")
+        return make_schemes()
+
+
+SCHEMES = all_schemes()                          # key generation once (RSA keygen is slow)
+OTHER_KEYS = all_schemes()                       # same algorithms, different key pairs
 IDS = [s.name for s in SCHEMES]
+PADDED_MOCKS = {KY_N, K1024_N}                   # mocks whose KEM part is a 32-byte token plus unused filler
 
 
 @pytest.fixture(scope="module")
@@ -59,6 +74,25 @@ def test_wrong_key_cannot_decrypt(pair):
     scheme, other = pair
     with pytest.raises(ValueError):
         other.decrypt(scheme.encrypt(b"secret-ehr"))
+
+
+def test_truncated_ciphertext_rejected(pair):
+    scheme, _ = pair
+    c = scheme.encrypt(b"secret-ehr")
+    for keep in (1, len(c) // 2, len(c) - 1):
+        with pytest.raises(ValueError):
+            scheme.decrypt(c[:keep])
+
+
+def test_tampering_inside_kem_part_rejected(pair, request):
+    scheme, _ = pair
+    if scheme.name in PADDED_MOCKS:
+        request.applymarker(pytest.mark.xfail(
+            strict=True, reason="MOCK-FLAW: decaps reads only the first 32 bytes of the padded KEM ciphertext, so the rest can be changed unnoticed"))
+    c = bytearray(scheme.encrypt(b"secret-ehr"))
+    c[getattr(scheme, "kem_size", 256) // 2] ^= 1            # a byte in the middle of the key-transport part
+    with pytest.raises(ValueError):
+        scheme.decrypt(bytes(c))
 
 
 # ---------- sensor records ----------

@@ -46,3 +46,52 @@ python sensors.py         # one part on its own (also encryption.py, access_cont
 `blockchain.py` and `report.py` need the earlier parts, so running them directly runs `main.py`.
 Running a single part on its own draws different random numbers from the shared seed than the full run, so its numbers can differ slightly
 from `main.py` / the notebook.
+
+## Real ML-KEM extension (post-quantum encryption)
+
+The baseline above reproduces the paper, including its mock "Kyber". These files replace the mock with real ML-KEM (NIST FIPS 203, liboqs).
+They are additive: nothing in the paper baseline imports them, and the baseline needs no C library.
+
+| File | What it holds |
+|---|---|
+| `pqc_real.py` | ML-KEM-512/768/1024 + AES-256-GCM scheme with the same `encrypt` / `decrypt` interface as `RSAScheme` and `MockKyber`; `seal` (public key only), `MLKEMKeyPair` (Decaps) |
+| `key_handoff.py` | Per-patient keys: epoch data key wrapped to the patient, re-wrapped to a doctor at grant time (design in the file's docstring) |
+| `benchmark_pqc.py` | Separate benchmark entry point: RSA-2048 vs the paper's mock vs real ML-KEM, primitive and record level, memory, environment |
+| `requirements-pqc.txt` | `requirements.txt` + `liboqs-python` (kept apart so the other layers install without it) |
+| `tests/test_pqc_real.py`, `tests/test_key_handoff.py`, `tests/test_benchmark_pqc.py` | Conformance, key-flow and benchmark smoke tests |
+
+`tests/test_encryption.py` runs its universal tests (round trip, randomised, tamper, wrong key, truncation, store/fetch) over every scheme,
+the real ML-KEM ones included.
+
+### Install liboqs (once)
+
+liboqs-python needs the liboqs C library. It looks in `~/_oqs` and otherwise tries to build it itself, so build it there on purpose:
+
+```bash
+pip install cmake ninja                      # if you have no cmake/ninja
+git clone --depth 1 --branch 0.16.0 https://github.com/open-quantum-safe/liboqs.git
+cmake -GNinja -S liboqs -B liboqs/build -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON \
+      -DOQS_BUILD_ONLY_LIB=ON -DOQS_USE_OPENSSL=OFF -DCMAKE_INSTALL_PREFIX="$HOME/_oqs"
+cmake --build liboqs/build --parallel && cmake --install liboqs/build
+pip install -r requirements-pqc.txt
+```
+
+The same build flags are used in CI. `OQS_USE_OPENSSL=OFF` makes liboqs use its own hashing, so it needs no OpenSSL headers; record this in the paper.
+
+### Run
+
+```bash
+python benchmark_pqc.py --quick              # seconds, smoke run
+python benchmark_pqc.py                      # full run (5 runs x 1000 records), results in output/pqc/
+python benchmark_pqc.py --no-pqc             # baseline schemes only, no liboqs needed
+REQUIRE_PQC=1 pytest tests/ -v -rs           # all tests; without REQUIRE_PQC the real-ML-KEM tests are skipped with a warning if liboqs is missing
+```
+
+Output in `output/pqc/`: `records.csv` (per scheme: time mean ± 95% CI over runs, p50/p95/p99, throughput, bytes, memory), `primitives.csv`
+(KeyGen / Encaps / Decaps), `environment.json` (CPU, OS, versions, commit, seed), `fig_pqc_comparison.png`.
+
+For a publishable run: plug in the charger, close other programs, set the CPU governor to `performance`
+(`sudo cpupower frequency-set -g performance`), and run the full benchmark. Numbers are laptop-class and meaningful as ratios on one machine,
+not as IoMT-device timings.
+
+CI note: the OpenSSL cross-check tests need OpenSSL 3.5 or newer and are skipped on older runners (the CI log shows the skip reason with `-rs`).
