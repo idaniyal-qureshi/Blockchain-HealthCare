@@ -402,6 +402,20 @@ def make_schemes():
     ]
 
 
+def make_pqc_schemes(levels=(512, 768, 1024)):
+    """Real ML-KEM + AES-GCM schemes (pqc_real.py, liboqs). Kept out of make_schemes() so the paper baseline needs no C library."""
+    try:
+        import pqc_real
+    except (ImportError, RuntimeError, OSError) as e:
+        raise ImportError("real ML-KEM needs liboqs and liboqs-python: pip install -r requirements-pqc.txt (see README, 'Real ML-KEM')") from e
+    return pqc_real.make_pqc_schemes(levels)
+
+
+def make_all_schemes(levels=(512, 768, 1024)):
+    """The four paper-baseline schemes plus the real ML-KEM ones."""
+    return make_schemes() + make_pqc_schemes(levels)
+
+
 def run_encryption(patient_records=None, store_path=STORE_FILE):
     """STEP 2 (edge devices): encrypt every patient's sensor records with every scheme and store the ciphertext in ONE file.
     Nothing is decrypted here. patient_records: {pid: [record, ...]}; if None they are generated with sensors.edge_records().

@@ -35,6 +35,9 @@ The gaps are validation and implementation limits, not claims that the original 
 │       ├── common.py       shared setup and the CFG parameter table
 │       ├── sensors.py      1. fault-tolerant sensor ingestion
 │       ├── encryption.py   2. RSA-2048 vs Kyber-inspired encryption
+│       ├── pqc_real.py     2b. real ML-KEM (liboqs) + AES-GCM, replaces the mock
+│       ├── key_handoff.py  2b. per-patient keys, grant to a doctor
+│       ├── benchmark_pqc.py 2b. RSA vs mock vs real ML-KEM benchmark
 │       ├── access_control.py 3. hash-commitment access control
 │       ├── consensus.py    4. Raft / PBFT / HotStuff / Tendermint simulator
 │       ├── blockchain.py   5. ledger, end-to-end flow, storage, energy
