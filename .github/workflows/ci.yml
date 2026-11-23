@@ -11,6 +11,9 @@ defaults:
   run:
     working-directory: code/v2_components
 
+env:
+  LIBOQS_VERSION: "0.16.0"      # keep in step with liboqs-python in requirements-pqc.txt
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -24,18 +27,42 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
-          cache-dependency-path: code/v2_components/requirements.txt
+          cache-dependency-path: code/v2_components/requirements*.txt
 
-      - name: Install dependencies
-        run: pip install -r requirements.txt
+      - name: Cache liboqs
+        id: liboqs-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/_oqs
+          key: liboqs-${{ env.LIBOQS_VERSION }}-noopenssl-${{ runner.os }}
+
+      - name: Build liboqs (only when not cached)
+        if: steps.liboqs-cache.outputs.cache-hit != 'true'
+        working-directory: ${{ runner.temp }}
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq cmake ninja-build
+          git clone --depth 1 --branch "$LIBOQS_VERSION" https://github.com/open-quantum-safe/liboqs.git
+          cmake -GNinja -S liboqs -B liboqs/build -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON \
+            -DOQS_BUILD_ONLY_LIB=ON -DOQS_USE_OPENSSL=OFF -DCMAKE_INSTALL_PREFIX="$HOME/_oqs"
+          cmake --build liboqs/build --parallel
+          cmake --install liboqs/build
+
+      - name: Install dependencies (including liboqs-python)
+        run: pip install -r requirements-pqc.txt
 
       - name: Lint with ruff
         run: ruff check .
 
-      - name: Run unit tests
-        run: pytest tests/ -v
+      - name: Run unit tests (real ML-KEM is required, not skipped)
+        env:
+          REQUIRE_PQC: "1"
+          MPLBACKEND: Agg
+        run: |
+          openssl version
+          pytest tests/ -v -rs
 
       - name: Import smoke test
         env:
           MPLBACKEND: Agg
-        run: python -c "import encryption, common; print('imports OK')"
+        run: python -c "import encryption, common, pqc_real, key_handoff; print('imports OK')"
