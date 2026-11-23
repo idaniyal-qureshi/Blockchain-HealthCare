@@ -1,0 +1,3 @@
+# Framingham CSV (no licence on the source repo; original data from NHLBI BioLINCC) and generated outputs stay local
+data/
+output/
