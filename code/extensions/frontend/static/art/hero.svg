@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 360" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Landing: health data in a chain of blocks, guarded by a shield -->
+  <circle cx="260" cy="190" r="160" fill="#fff" opacity=".06"/>
+  <path d="M138 214h44M338 214h44" stroke="#fff" stroke-width="8"/>
+  <rect x="40" y="166" width="98" height="98" rx="24" fill="#1f1a4d" stroke="#fff" stroke-width="6"/>
+  <rect x="62" y="194" width="54" height="9" rx="4.5" fill="#c9c2ff" opacity=".7"/><rect x="62" y="214" width="38" height="9" rx="4.5" fill="#c9c2ff" opacity=".45"/>
+  <rect x="62" y="234" width="46" height="9" rx="4.5" fill="#c9c2ff" opacity=".45"/>
+  <rect x="382" y="166" width="98" height="98" rx="24" fill="#1f1a4d" stroke="#fff" stroke-width="6"/>
+  <rect x="404" y="194" width="54" height="9" rx="4.5" fill="#c9c2ff" opacity=".7"/><rect x="404" y="214" width="38" height="9" rx="4.5" fill="#c9c2ff" opacity=".45"/>
+  <rect x="404" y="234" width="46" height="9" rx="4.5" fill="#c9c2ff" opacity=".45"/>
+  <rect x="182" y="136" width="156" height="156" rx="34" fill="#6a5cff" stroke="#fff" stroke-width="7"/>
+  <path d="M236 186c0-12 11-19 24-11 13-8 24-1 24 11 0 15-24 28-24 28s-24-13-24-28z" fill="#ff8fb1" stroke="#fff" stroke-width="5"/>
+  <polyline points="200,250 226,250 238,228 252,268 266,238 276,250 320,250" stroke="#fff" stroke-width="6"/>
+  <path d="M398 40 352 58v32c0 30 20 48 46 56 26-8 46-26 46-56V58z" fill="#6ee7c2" stroke="#fff" stroke-width="6"/>
+  <path d="M378 92l14 14 26-28" stroke="#1f1a4d" stroke-width="7"/>
+  <circle cx="80" cy="70" r="6" fill="#ff8fb1"/><circle cx="120" cy="110" r="4" fill="#fff" opacity=".7"/><circle cx="470" cy="320" r="5" fill="#fff" opacity=".7"/>
+</svg>

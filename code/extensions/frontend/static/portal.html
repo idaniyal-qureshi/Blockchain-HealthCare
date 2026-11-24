@@ -1,0 +1,341 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HealthSafe</title>
+  <link rel="stylesheet" href="/static/styles.css">
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+</head>
+<body>
+  <div class="blob b1" aria-hidden="true"></div><div class="blob b2" aria-hidden="true"></div><div class="blob b3" aria-hidden="true"></div>
+
+  <!-- ============================== LOGIN ============================== -->
+  <div id="loginView" class="login hidden">
+    <div class="login-photo">
+      <img id="loginImg" class="art" alt="">
+      <div class="login-shade"></div>
+      <div class="login-photo-text">
+        <span class="badge" id="loginBadge"></span>
+        <h2 id="loginTagline"></h2>
+        <p id="loginBlurb"></p>
+      </div>
+    </div>
+    <div class="login-panel">
+      <a class="brand" href="/">
+        <div class="logo" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2.5 4 5.5v6c0 5 3.4 8.6 8 10 4.6-1.4 8-5 8-10v-6z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M7.5 12.5h2.5l1.5-3 2 6 1.5-3h1.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <div><div class="brand-title">HealthSafe</div><div class="brand-sub">Patient-controlled records</div></div>
+      </a>
+      <div class="login-card glass">
+        <div class="eyebrow" id="loginEyebrow"></div>
+        <h1>Welcome back</h1>
+        <p class="muted" id="loginHint"></p>
+        <form id="loginForm" autocomplete="on">
+          <label>Username <input id="loginUser" name="username" autocomplete="username" required></label>
+          <label>Password <input id="loginPass" name="password" type="password" autocomplete="current-password" required></label>
+          <div id="loginErr" class="form-err hidden" role="alert"></div>
+          <button class="btn primary wide lg" id="loginBtn" type="submit">Sign in</button>
+        </form>
+        <div class="demo-users">
+          <div class="side-label">Demo accounts</div>
+          <div id="demoUsers" class="chips"></div>
+          <small class="muted">Click a name to fill it in. The demo passwords are in <span class="mono">demo_accounts.json</span>.</small>
+        </div>
+      </div>
+      <div class="other-portals" id="otherPortals"></div>
+    </div>
+  </div>
+
+  <!-- ============================== APP ============================== -->
+  <div id="appView" class="shell hidden">
+    <aside class="sidebar glass">
+      <a class="brand" href="/">
+        <div class="logo" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2.5 4 5.5v6c0 5 3.4 8.6 8 10 4.6-1.4 8-5 8-10v-6z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M7.5 12.5h2.5l1.5-3 2 6 1.5-3h1.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <div><div class="brand-title">HealthSafe</div><div class="brand-sub" id="portalName"></div></div>
+      </a>
+      <div class="usercard" id="userCard"></div>
+      <nav class="nav" id="nav" role="tablist" aria-label="Sections"></nav>
+      <div class="side-bottom">
+        <div class="side-card"><span class="pill warnc">Baseline mode</span>
+          <p>Hao et al. (2025), reproduced as published. Two of its attacks succeed by design.</p></div>
+        <button class="btn ghost wide" id="logoutBtn"><svg viewBox="0 0 24 24"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l-5-5 5-5M5 12h11"/></svg>Sign out</button>
+      </div>
+    </aside>
+
+    <div class="main-col">
+      <header class="topbar">
+        <div><div class="eyebrow" id="viewEyebrow"></div><h1 id="viewTitle"></h1></div>
+        <div class="top-pills"><span class="pill soft" id="srcPill">–</span><span class="pill soft" id="nodesPill">–</span><span class="pill soft" id="chainPill">–</span></div>
+      </header>
+      <main>
+        <div id="dsBanner" class="callout banner-top hidden" role="status">The administrator loaded a new dataset: the ledger, pseudonyms and consent were rebuilt. <button class="btn" id="dsBannerReload">Reload page</button></div>
+        <div id="loading" class="loading glass hidden"><span class="spinner"></span><span id="loadingText">Loading&hellip;</span></div>
+
+        <!-- ============================== PATIENT ============================== -->
+        <section id="sec-p-home" class="panel">
+          <div class="photo-banner">
+            <img src="/static/art/patient.svg" alt="" class="art">
+            <div class="photo-banner-text"><span class="badge">Your wearable</span><h2 id="pHello"></h2>
+              <p id="pBannerText"></p></div>
+          </div>
+          <div class="card callout-card p-no-record hidden"><h3>Your record is not in the loaded dataset</h3><p class="muted why"></p><p class="muted">The administrator loaded a smaller dataset than there are patient accounts. Ask them to load more patients; this page updates on its own.</p></div>
+          <div class="stats p-needs-record" id="pStats"></div>
+          <div class="card p-needs-record">
+            <div class="row head-row"><h3><span aria-hidden="true" class="ic i-rose">&#9829;</span>Heart rate on this device</h3><span class="pill ok">your record</span></div>
+            <div id="pVitals" class="chart"></div>
+            <div id="pVitalsNote" class="note"></div>
+          </div>
+        </section>
+
+        <section id="sec-p-consent" class="panel">
+          <p class="lede">Your phone holds the two secret keys. Grant a hospital a consent token, define who may read what, and revoke
+            either at any time. Every change is written to the ledger through consensus.</p>
+          <div class="grid2">
+            <div class="card">
+              <h3><span aria-hidden="true" class="ic i-violet">&#9919;</span>Consent tokens <span class="tag">Eq. 5&ndash;7</span></h3>
+              <table class="tbl" id="pTokens"></table>
+              <div class="actions"><label class="inline">Give token to <select id="grantHosp"></select></label></div>
+              <div class="actions"><button class="btn primary" id="grantBtn">Give consent token</button></div>
+              <div class="danger-zone"><div><b>Revoke for every hospital</b><div class="sub">Issues a new secret: all tokens held today stop working.</div></div><button class="btn danger" id="revokeTokBtn">Revoke all tokens</button></div>
+            </div>
+            <div class="card">
+              <h3><span aria-hidden="true" class="ic i-mint">&#10010;</span>Define or revoke a policy</h3>
+              <div class="form">
+                <label>Hospital <select id="polEntity"></select></label>
+                <label>Role <select id="polRole"><option>doctor</option><option>nurse</option><option>auditor</option></select></label>
+                <label>Resource <select id="polRes"><option>EHR</option><option>audit_logs</option></select></label>
+                <label>Access <select id="polAccess"><option>read</option><option>write</option></select></label>
+                <label>Valid for (minutes) <input id="polTtl" type="number" min="1" max="525600" step="1" value="60"></label>
+              </div>
+              <div class="actions"><button class="btn primary" id="polDefBtn">Write policy</button>
+                <button class="btn danger" id="polRevBtn">Revoke this hospital&rsquo;s policy</button></div>
+              <p class="note"><b>How the paper decides:</b> a hospital is governed by its latest-expiring policy (Eq.&nbsp;10), whatever it covers, so a new policy for a hospital replaces the current one. The role is recorded but not checked.</p>
+              <div id="pLedger" class="note"></div>
+            </div>
+          </div>
+          <div class="card">
+            <h3><span aria-hidden="true" class="ic i-sky">&#9776;</span>Your access policies <span class="tag">Eqs. 8&ndash;10</span></h3>
+            <div class="scroll"><table class="tbl" id="pPolicies"></table></div>
+          </div>
+        </section>
+
+        <section id="sec-p-history" class="panel">
+          <p class="lede">Everything the ledger records about you. Entries carry only your pseudonym: the ledger does not say which hospital
+            asked (Sec. 4.5), so this is what anyone reading the chain can see too.</p>
+          <div class="card">
+            <div class="row head-row"><h3><span aria-hidden="true" class="ic i-violet">&#9939;</span>On-chain events</h3><span id="pHistNote" class="pill soft"></span></div>
+            <div class="scroll tall"><table class="tbl" id="pHist"></table></div>
+          </div>
+        </section>
+
+        <!-- ============================== DOCTOR ============================== -->
+        <section id="sec-d-request" class="panel">
+          <p class="lede">Request a patient&rsquo;s record for your hospital. Access needs the authorisation proof (Algorithms 3&ndash;4), the
+            patient&rsquo;s policy (Eqs. 8&ndash;10) <em>and</em> a consensus commit of the decision; only then is the record decrypted.</p>
+          <div class="presets">
+            <button class="chip" data-preset="valid">Valid request</button>
+            <button class="chip" data-preset="corrupt">2 corrupted transmissions</button>
+            <button class="chip" data-preset="corrupt3">k corrupted (gives up)</button>
+            <button class="chip" data-preset="write">Write not permitted</button>
+            <button class="chip" data-preset="audit">Ask for audit logs</button>
+            <button class="chip warn" data-preset="ledger">Attack: ledger-copied policy token</button>
+          </div>
+          <div class="grid-side">
+            <div class="card">
+              <h3><span aria-hidden="true" class="ic i-violet">&#9998;</span>Request</h3>
+              <div class="form one">
+                <label class="full">Patient <select id="dPatient"></select></label>
+                <label>Resource <select id="dRes"><option>EHR</option><option>audit_logs</option></select></label>
+                <label>Action <select id="dAct"><option>read</option><option>write</option></select></label>
+                <label>Corrupted transmissions <input id="dCorrupt" type="number" min="0" max="5" value="0"></label>
+                <label class="check"><input type="checkbox" id="dLedgerPol"> Submit a policy token copied from the ledger</label>
+              </div>
+              <div class="note" id="dAsWho"></div>
+              <div class="actions"><button class="btn primary wide" id="dReqBtn">Request record</button></div>
+            </div>
+            <div class="card">
+              <h3><span aria-hidden="true" class="ic i-sky">&#10003;</span>Decision</h3>
+              <div id="dResult" class="result empty" aria-live="polite">Pick a scenario above, or build a request and send it.</div>
+            </div>
+          </div>
+          <div class="card">
+            <h3><span aria-hidden="true" class="ic i-rose">&#9829;</span>Released record</h3>
+            <div id="dChart" class="chart"><div class="note">Nothing released yet.</div></div>
+            <div id="dChartNote" class="note"></div>
+          </div>
+        </section>
+
+        <section id="sec-d-patients" class="panel">
+          <p class="lede">Patients in the loaded dataset, and whether your hospital currently holds a valid consent token and a policy for
+            each. You can still request any of them; the system will refuse what the patient has not consented to.</p>
+          <div class="card"><div class="scroll tall scroll-x"><table class="tbl" id="dPatients"></table></div></div>
+        </section>
+
+        <section id="sec-d-history" class="panel">
+          <div class="card"><h3><span aria-hidden="true" class="ic i-violet">&#9776;</span>Your requests</h3>
+            <div class="scroll tall"><table class="tbl" id="dHist"></table></div></div>
+        </section>
+
+        <!-- ============================== HOSPITAL ============================== -->
+        <section id="sec-h-home" class="panel">
+          <div class="photo-banner">
+            <img src="/static/art/hospital.svg" alt="" class="art">
+            <div class="photo-banner-text"><span class="badge" id="hCode"></span><h2 id="hName"></h2>
+              <p>One member of the hospital consortium: it runs a validator node and requests records on its staff&rsquo;s behalf.</p></div>
+          </div>
+          <div class="stats" id="hStats"></div>
+          <div class="grid2">
+            <div class="card"><div class="row head-row"><h3><span aria-hidden="true" class="ic i-violet">&#9776;</span>Latest requests</h3><span class="note h-updated"></span></div><div id="hRecent"></div></div>
+            <div class="card"><h3><span aria-hidden="true" class="ic i-mint">&#9786;</span>Staff accounts</h3><div id="hStaffMini" class="staff-mini"></div></div>
+          </div>
+        </section>
+
+        <section id="sec-h-patients" class="panel">
+          <p class="lede">Every patient in the loaded dataset and what they have consented to for your hospital. Your staff can read a record only with a valid token <em>and</em> a policy in force. This view is read-only and refreshes every 15 seconds.</p>
+          <div id="hPatientsNote"></div>
+          <div class="card"><div class="scroll-x"><table class="tbl" id="hPatients"></table></div><div class="note h-updated"></div></div>
+        </section>
+
+        <section id="sec-h-log" class="panel">
+          <p class="lede">Your hospital&rsquo;s own record of who requested what. It is kept off-chain: the ledger&rsquo;s audit entries carry
+            only patient pseudonyms, not hospitals or staff.</p>
+          <div class="card"><div class="row head-row"><span class="note" id="hLogNote"></span><span class="note h-updated"></span></div><div class="scroll xl"><table class="tbl" id="hLog"></table></div></div>
+        </section>
+
+        <section id="sec-h-staff" class="panel">
+          <div class="staff-grid" id="hStaff"></div>
+        </section>
+
+        <!-- ============================== ADMIN ============================== -->
+        <section id="sec-a-home" class="panel">
+          <div class="photo-banner short">
+            <img src="/static/art/admin.svg" alt="" class="art">
+            <div class="photo-banner-text"><span class="badge">Consortium control</span><h2>Everything the hospitals share</h2>
+              <p>Load the dataset, keep the validator nodes healthy, audit the ledger and test the baseline&rsquo;s defences.</p></div>
+          </div>
+          <div class="stats" id="aStats"></div>
+          <div class="grid3" id="aShortcuts"></div>
+        </section>
+
+        <section id="sec-a-dataset" class="panel">
+          <div class="grid-main">
+            <div class="card">
+              <h3><span aria-hidden="true" class="ic i-violet">&#8681;</span>Load a dataset</h3>
+              <div class="src-cards">
+                <label class="src-card"><input type="radio" name="dsSource" value="synthetic" checked>
+                  <div><b>Synthetic sensors</b><small>The paper&rsquo;s simulated wearable (Sec 5.2): 5 sensors, 20% injected faults.</small></div></label>
+                <label class="src-card" id="dsWildCard"><input type="radio" name="dsSource" value="wildppg">
+                  <div><b>WildPPG recordings</b><small id="dsWildNote">Real body-worn PPG with ECG heart rate as ground truth.</small></div></label>
+              </div>
+              <div class="form compact" style="margin-top:14px">
+                <label>Patients <input id="dsPatients" type="number" min="2" max="16" value="8"></label>
+                <label>Readings per patient <input id="dsSteps" type="number" min="20" max="400" value="100"></label>
+                <label>Validator nodes <input id="dsNodes" type="number" min="4" max="31" value="7"></label>
+                <label>Crashed at start <input id="dsCrashed" type="number" min="0" value="1"></label>
+                <label>Compromised at start <input id="dsComp" type="number" min="0" value="1"></label>
+              </div>
+              <p class="note" id="dsLimits"></p>
+              <div class="actions"><button class="btn primary" id="dsLoadBtn">Load dataset &amp; rebuild ledger</button></div>
+              <p class="note">Loading rebuilds the whole system: a new ledger, fresh consent for hospA, new patient pseudonyms. Patient accounts
+                map to patients by position, so <span class="mono">patient1</span> becomes the first patient of the new dataset.</p>
+            </div>
+            <div class="card">
+              <h3><span aria-hidden="true" class="ic i-mint">&#9673;</span>Loaded now</h3>
+              <div id="dsCurrent"></div>
+            </div>
+          </div>
+          <div class="card">
+            <h3><span aria-hidden="true" class="ic i-sky">&#9786;</span>Patients in the loaded dataset</h3>
+            <div class="scroll"><table class="tbl" id="dsPatientsTbl"></table></div>
+            <div class="note warnline" id="dsWarn"></div>
+            <div id="dsParts" class="note"></div>
+          </div>
+        </section>
+
+        <section id="sec-a-nodes" class="panel">
+          <div class="grid-main">
+            <div class="card">
+              <div class="row head-row"><h3><span aria-hidden="true" class="ic i-violet">&#9673;</span>Validator nodes <span class="tag">Raft, Eq. 11</span></h3><button class="btn" id="aRecoverAll">Recover all</button></div>
+              <div class="note" id="aQuorumLine"></div>
+              <div class="callout bad hidden" id="aNoQuorum" role="alert"><b>No quorum.</b> <span class="why"></span></div>
+              <div id="aNodes" class="nodes"></div>
+              <p class="note">Crash nodes until fewer than a quorum are alive and commits stop (Lemma 2). A compromised leader
+                tampers with records; honest validators reject its block through the gateway tag (threat A1).</p>
+            </div>
+            <div class="card"><h3><span aria-hidden="true" class="ic i-sky">&#8635;</span>Recent consensus rounds</h3><div id="aCons" class="scroll tall"></div></div>
+          </div>
+        </section>
+
+        <section id="sec-a-ledger" class="panel">
+          <div class="card">
+            <div class="row head-row"><h3><span aria-hidden="true" class="ic i-mint">&#9939;</span>Ledger <span class="tag">Eq. 12</span></h3><span id="aValid" class="pill"></span></div>
+            <div class="scroll tall"><table class="tbl" id="aLedger"></table></div>
+            <div id="aBlock" class="blockdetail"></div>
+          </div>
+        </section>
+
+        <section id="sec-a-audit" class="panel">
+          <div class="grid2">
+            <div class="card"><h3><span aria-hidden="true" class="ic i-rose">&#9776;</span>Audit trail (on-chain)</h3><div id="aAuditNote" class="note"></div>
+              <div class="scroll tall"><table class="tbl" id="aAudit"></table></div></div>
+            <div class="card"><h3><span aria-hidden="true" class="ic i-violet">&#9889;</span>Smart-contract events</h3>
+              <div class="scroll tall"><table class="tbl" id="aContracts"></table></div></div>
+          </div>
+        </section>
+
+        <section id="sec-a-users" class="panel">
+          <p class="lede">Portal accounts. Disabling an account signs it out everywhere and blocks new sign-ins. Portal logins only decide who
+            may use which screen: a record is still released only by the paper&rsquo;s token, policy and consensus checks.</p>
+          <div class="card"><div class="scroll-x"><table class="tbl" id="aUsers"></table></div></div>
+        </section>
+
+        <section id="sec-a-lab" class="panel">
+          <div class="card">
+            <div class="row head-row">
+              <h3><span aria-hidden="true" class="ic i-rose">&#9888;</span>Attack suite <span class="tag">Sec. 5.5</span></h3>
+              <div class="actions tight"><label class="inline">Attempts <input id="lAttN" type="number" value="100" min="10" max="1000"></label>
+                <button class="btn primary" id="lAttBtn">Run attacks</button></div>
+            </div>
+            <div id="lAttacks" class="result empty">Runs the seven attacks against the paper&rsquo;s access control, plus legitimate traffic.</div>
+          </div>
+          <div class="grid3">
+            <div class="card">
+              <h3><span aria-hidden="true" class="ic i-violet">&#9201;</span>Verification vs RBAC</h3>
+              <div class="actions tight"><label class="inline">Requests <input id="lVerN" type="number" value="500"></label><button class="btn" id="lVerBtn">Run</button></div>
+              <div id="lVerify" class="result empty"></div>
+            </div>
+            <div class="card">
+              <h3><span aria-hidden="true" class="ic i-mint">&#128274;</span>Encryption</h3>
+              <div class="actions tight"><label class="inline">Messages <input id="lCryN" type="number" value="100"></label><button class="btn" id="lCryBtn">Run</button></div>
+              <div id="lCrypto" class="result empty"></div>
+            </div>
+            <div class="card">
+              <h3><span aria-hidden="true" class="ic i-sky">&#9673;</span>Consensus</h3>
+              <div class="form compact">
+                <label>Protocol <select id="lConsP"><option>Raft</option><option>HotStuff</option><option>Tendermint</option><option>PBFT</option></select></label>
+                <label>Nodes <input id="lConsN" type="number" value="100"></label>
+                <label>Mode <select id="lConsM"><option>normal</option><option>failover</option><option>congestion</option></select></label>
+                <label>Crashed <input id="lConsC" type="number" value="0"></label>
+              </div>
+              <div class="actions"><button class="btn" id="lConsBtn">Run 30 rounds</button></div>
+              <div id="lCons" class="result empty"></div>
+            </div>
+          </div>
+        </section>
+
+        <section id="sec-a-figures" class="panel">
+          <div class="card">
+            <div class="row head-row"><h3><span aria-hidden="true" class="ic i-violet">&#9638;</span>Paper experiments (all figures)</h3>
+              <div class="actions tight"><button class="btn" id="lExpBtn">Run full experiments (~8 min)</button></div></div>
+            <pre id="lExpLog" class="log hidden"></pre>
+            <div id="lFigs" class="figs"></div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden" role="status"></div>
+  <script src="/static/app.js"></script>
+</body>
+</html>

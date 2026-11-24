@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 320" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Patient: a wrist wearable reading a heartbeat -->
+  <circle cx="200" cy="160" r="138" fill="#fff" opacity=".06"/>
+  <rect x="163" y="14" width="74" height="292" rx="26" fill="#c9c2ff" opacity=".28"/>
+  <path d="M296 112c14 14 14 82 0 96M318 92c26 26 26 110 0 136" stroke="#fff" stroke-width="5" opacity=".35"/>
+  <path d="M104 112c-14 14-14 82 0 96M82 92c-26 26-26 110 0 136" stroke="#fff" stroke-width="5" opacity=".35"/>
+  <rect x="128" y="82" width="144" height="156" rx="38" fill="#1f1a4d" stroke="#fff" stroke-width="6"/>
+  <rect x="272" y="138" width="12" height="36" rx="5" fill="#fff"/>
+  <path d="M190 112c0-6 5-10 10-6 5-4 10 0 10 6 0 7-10 13-10 13s-10-6-10-13z" fill="#ff8fb1"/>
+  <polyline points="148,170 172,170 186,138 204,204 220,152 230,170 252,170" stroke="#ff8fb1" stroke-width="7"/>
+  <rect x="170" y="204" width="60" height="8" rx="4" fill="#c9c2ff" opacity=".6"/>
+  <circle cx="60" cy="58" r="5" fill="#6ee7c2"/><circle cx="346" cy="268" r="6" fill="#ff8fb1" opacity=".8"/><circle cx="350" cy="50" r="4" fill="#fff" opacity=".7"/>
+</svg>

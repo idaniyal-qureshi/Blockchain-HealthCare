@@ -1,0 +1,27 @@
+{
+  "_note": "DEMO ACCOUNTS ONLY. Plaintext test passwords for the local demo; the server hashes them (PBKDF2-SHA256) at start-up and never stores or returns them. All names are fictional. Patient accounts map to the N-th patient of whichever dataset is loaded.",
+  "hospitals": {
+    "hospA": {"name": "Northgate General Hospital", "city": "Islamabad"},
+    "hospB": {"name": "Riverside Medical Centre", "city": "Lahore"}
+  },
+  "accounts": [
+    {"username": "admin",       "password": "Admin@2026",    "role": "admin",    "name": "System Administrator"},
+
+    {"username": "hospa.admin", "password": "Hospital@2026", "role": "hospital", "name": "Northgate Records Office", "hospital": "hospA"},
+    {"username": "hospb.admin", "password": "Hospital@2026", "role": "hospital", "name": "Riverside Records Office", "hospital": "hospB"},
+
+    {"username": "dr.sana",     "password": "Doctor@2026",   "role": "doctor",   "name": "Dr. Sana Iqbal",   "hospital": "hospA", "staff_role": "doctor", "specialty": "Cardiology"},
+    {"username": "dr.hamza",    "password": "Doctor@2026",   "role": "doctor",   "name": "Dr. Hamza Rafiq",  "hospital": "hospA", "staff_role": "doctor", "specialty": "Internal medicine"},
+    {"username": "nurse.amna",  "password": "Doctor@2026",   "role": "doctor",   "name": "Amna Tariq, RN",   "hospital": "hospA", "staff_role": "nurse",  "specialty": "Ward nursing"},
+    {"username": "dr.bilal",    "password": "Doctor@2026",   "role": "doctor",   "name": "Dr. Bilal Ahmed",  "hospital": "hospB", "staff_role": "doctor", "specialty": "Emergency"},
+
+    {"username": "patient1", "password": "Patient@2026", "role": "patient", "name": "Ali Raza",      "patient_index": 0},
+    {"username": "patient2", "password": "Patient@2026", "role": "patient", "name": "Hira Khan",     "patient_index": 1},
+    {"username": "patient3", "password": "Patient@2026", "role": "patient", "name": "Usman Malik",   "patient_index": 2},
+    {"username": "patient4", "password": "Patient@2026", "role": "patient", "name": "Ayesha Siddiq", "patient_index": 3},
+    {"username": "patient5", "password": "Patient@2026", "role": "patient", "name": "Fahad Butt",    "patient_index": 4},
+    {"username": "patient6", "password": "Patient@2026", "role": "patient", "name": "Zainab Noor",   "patient_index": 5},
+    {"username": "patient7", "password": "Patient@2026", "role": "patient", "name": "Omar Sheikh",   "patient_index": 6},
+    {"username": "patient8", "password": "Patient@2026", "role": "patient", "name": "Maryam Javed",  "patient_index": 7}
+  ]
+}
