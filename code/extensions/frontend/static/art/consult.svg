@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 320" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <!-- How a record is released: a sealed health record that opens only after the checks pass -->
+  <circle cx="200" cy="160" r="138" fill="#fff" opacity=".06"/>
+  <rect x="70" y="58" width="150" height="196" rx="22" fill="#1f1a4d" stroke="#fff" stroke-width="6"/>
+  <rect x="94" y="86" width="74" height="9" rx="4.5" fill="#c9c2ff" opacity=".7"/>
+  <rect x="94" y="108" width="100" height="9" rx="4.5" fill="#c9c2ff" opacity=".45"/>
+  <rect x="94" y="130" width="60" height="9" rx="4.5" fill="#c9c2ff" opacity=".45"/>
+  <polyline points="92,196 116,196 128,172 142,220 156,184 166,196 198,196" stroke="#ff8fb1" stroke-width="7"/>
+  <path d="M248 136v-28a36 36 0 0 1 70-12" stroke="#fff" stroke-width="9"/>
+  <rect x="222" y="136" width="114" height="104" rx="22" fill="#6a5cff" stroke="#fff" stroke-width="6"/>
+  <circle cx="279" cy="178" r="12" fill="#fff"/><path d="M279 188v22" stroke="#fff" stroke-width="9"/>
+  <g fill="#6ee7c2"><circle cx="246" cy="276" r="9"/><circle cx="274" cy="276" r="9"/><circle cx="302" cy="276" r="9"/><circle cx="330" cy="276" r="9" opacity=".35"/></g>
+  <circle cx="352" cy="56" r="5" fill="#ff8fb1"/><circle cx="42" cy="270" r="5" fill="#fff" opacity=".7"/>
+</svg>

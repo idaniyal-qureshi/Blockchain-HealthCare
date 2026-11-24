@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 320" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Hospital: a consortium member building -->
+  <circle cx="200" cy="170" r="138" fill="#fff" opacity=".06"/>
+  <path d="M30 284h340" stroke="#fff" stroke-width="5" opacity=".4"/>
+  <rect x="48" y="160" width="72" height="124" rx="10" fill="#c9c2ff" fill-opacity=".22" stroke="#fff" stroke-width="6"/>
+  <rect x="280" y="160" width="72" height="124" rx="10" fill="#c9c2ff" fill-opacity=".22" stroke="#fff" stroke-width="6"/>
+  <rect x="112" y="96" width="176" height="188" rx="12" fill="#1f1a4d" stroke="#fff" stroke-width="6"/>
+  <circle cx="200" cy="62" r="34" fill="#ff8fb1" stroke="#fff" stroke-width="6"/>
+  <path d="M200 46v32M184 62h32" stroke="#fff" stroke-width="8"/>
+  <g fill="#c9c2ff" opacity=".7">
+    <rect x="134" y="120" width="28" height="22" rx="5"/><rect x="186" y="120" width="28" height="22" rx="5"/><rect x="238" y="120" width="28" height="22" rx="5"/>
+    <rect x="134" y="160" width="28" height="22" rx="5"/><rect x="186" y="160" width="28" height="22" rx="5"/><rect x="238" y="160" width="28" height="22" rx="5"/>
+    <rect x="66" y="186" width="36" height="18" rx="5"/><rect x="66" y="222" width="36" height="18" rx="5"/>
+    <rect x="298" y="186" width="36" height="18" rx="5"/><rect x="298" y="222" width="36" height="18" rx="5"/>
+  </g>
+  <rect x="176" y="214" width="48" height="70" rx="8" fill="#6ee7c2"/>
+  <path d="M200 214v70" stroke="#1f1a4d" stroke-width="4"/>
+</svg>

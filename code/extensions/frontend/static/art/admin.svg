@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 320" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Admin: the validator-node network (one crashed, one compromised) around the shared ledger -->
+  <circle cx="200" cy="160" r="138" fill="#fff" opacity=".06"/>
+  <g stroke="#fff" stroke-width="4" opacity=".45">
+    <path d="M200 160 90 70M200 160 310 70M200 160 72 236M200 160 328 236M200 160 200 282M90 70 310 70M72 236 200 282M328 236 200 282"/>
+  </g>
+  <path d="M200 160 72 236" stroke="#fff" stroke-width="4" stroke-dasharray="6 10" opacity=".9"/>
+  <circle cx="90" cy="70" r="22" fill="#1f1a4d" stroke="#fff" stroke-width="6"/>
+  <circle cx="310" cy="70" r="22" fill="#1f1a4d" stroke="#fff" stroke-width="6"/>
+  <circle cx="328" cy="236" r="22" fill="#ff8fb1" stroke="#fff" stroke-width="6"/>
+  <circle cx="200" cy="282" r="22" fill="#1f1a4d" stroke="#fff" stroke-width="6"/>
+  <circle cx="72" cy="236" r="22" fill="#6c6894" stroke="#fff" stroke-width="6" opacity=".7"/>
+  <path d="M64 228l16 16M80 228l-16 16" stroke="#fff" stroke-width="5"/>
+  <g fill="#6ee7c2"><circle cx="90" cy="70" r="7"/><circle cx="310" cy="70" r="7"/><circle cx="200" cy="282" r="7"/></g>
+  <rect x="152" y="112" width="96" height="96" rx="22" fill="#6a5cff" stroke="#fff" stroke-width="6"/>
+  <path d="M200 132 176 145v26l24 13 24-13v-26z" stroke="#fff" stroke-width="6"/>
+  <path d="M176 145l24 13 24-13M200 158v26" stroke="#fff" stroke-width="6"/>
+</svg>

@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 320" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Clinician: a patient record on a clipboard, with a stethoscope -->
+  <circle cx="210" cy="160" r="138" fill="#fff" opacity=".06"/>
+  <rect x="178" y="52" width="160" height="214" rx="22" fill="#1f1a4d" stroke="#fff" stroke-width="6"/>
+  <rect x="220" y="36" width="76" height="32" rx="11" fill="#c9c2ff"/>
+  <rect x="204" y="96" width="84" height="9" rx="4.5" fill="#c9c2ff" opacity=".7"/>
+  <rect x="204" y="118" width="108" height="9" rx="4.5" fill="#c9c2ff" opacity=".45"/>
+  <rect x="204" y="140" width="64" height="9" rx="4.5" fill="#c9c2ff" opacity=".45"/>
+  <polyline points="202,206 228,206 240,180 256,232 270,192 280,206 314,206" stroke="#ff8fb1" stroke-width="7"/>
+  <path d="M74 54v68a40 40 0 0 0 80 0V54" stroke="#fff" stroke-width="7"/>
+  <circle cx="74" cy="48" r="8" fill="#fff"/><circle cx="154" cy="48" r="8" fill="#fff"/>
+  <path d="M114 162v52c0 38 22 54 56 54h12" stroke="#6ee7c2" stroke-width="7"/>
+  <circle cx="198" cy="268" r="20" fill="#6ee7c2" stroke="#fff" stroke-width="6"/>
+  <circle cx="198" cy="268" r="7" fill="#1f1a4d"/>
+  <circle cx="364" cy="70" r="5" fill="#ff8fb1"/><circle cx="40" cy="250" r="5" fill="#fff" opacity=".7"/>
+</svg>

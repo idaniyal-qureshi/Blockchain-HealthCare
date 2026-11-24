@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HealthSafe</title>
+  <link rel="stylesheet" href="/static/styles.css">
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+</head>
+<body class="landing">
+  <div class="blob b1" aria-hidden="true"></div><div class="blob b2" aria-hidden="true"></div><div class="blob b3" aria-hidden="true"></div>
+
+  <header class="lnav glass">
+    <a class="brand" href="/">
+      <div class="logo" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2.5 4 5.5v6c0 5 3.4 8.6 8 10 4.6-1.4 8-5 8-10v-6z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M7.5 12.5h2.5l1.5-3 2 6 1.5-3h1.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div><div class="brand-title">HealthSafe</div><div class="brand-sub">Patient-controlled records</div></div>
+    </a>
+    <nav class="lnav-links">
+      <a href="#portals">Portals</a><a href="#how">How it works</a><a href="#baseline">About the baseline</a>
+    </nav>
+    <span class="pill soft" id="sysPill">checking&hellip;</span>
+  </header>
+
+  <main class="lmain">
+    <section class="lhero">
+      <img src="/static/art/hero.svg" alt="" class="art">
+      <div class="lhero-shade"></div>
+      <div class="lhero-body">
+        <span class="badge">Baseline &middot; Hao et al. 2025, PLOS ONE</span>
+        <h1>Patient data on a ledger<br>that can&rsquo;t be quietly rewritten.</h1>
+        <p>Wearable vitals are encrypted at the edge. A record is only released after an authorisation proof, the patient&rsquo;s own
+          policy and a consensus commit, and every decision is written to the ledger.</p>
+        <div class="hero-cta">
+          <a class="btn primary lg" href="#portals">Choose a portal <span aria-hidden="true">&rarr;</span></a>
+          <a class="btn ghost lg on-photo" href="#how">How it works</a>
+        </div>
+      </div>
+    </section>
+
+    <section id="portals" class="lsection">
+      <div class="lsec-head"><span class="eyebrow">Sign in</span><h2>Four portals, four kinds of user</h2>
+        <p class="muted">Each portal has its own login. What you can see and do follows from who you are.</p></div>
+      <div class="pcards">
+        <a class="pcard" href="/patient">
+          <div class="pcard-img"><img src="/static/art/patient.svg" alt="" class="art"><span class="pill i-rose">Patient</span></div>
+          <div class="pcard-body"><h3>Patient portal</h3><p>See the vitals your wearable recorded. Grant or revoke a hospital&rsquo;s consent token and set who may read what.</p>
+            <span class="pcard-go">Sign in as a patient &rarr;</span></div>
+        </a>
+        <a class="pcard" href="/doctor">
+          <div class="pcard-img"><img src="/static/art/doctor.svg" alt="" class="art"><span class="pill i-violet">Clinician</span></div>
+          <div class="pcard-body"><h3>Doctor portal</h3><p>Request a patient&rsquo;s record for your hospital and watch each check (proof, policy, consensus) decide it.</p>
+            <span class="pcard-go">Sign in as a clinician &rarr;</span></div>
+        </a>
+        <a class="pcard" href="/hospital">
+          <div class="pcard-img"><img src="/static/art/hospital.svg" alt="" class="art"><span class="pill i-sky">Hospital</span></div>
+          <div class="pcard-body"><h3>Hospital portal</h3><p>Your hospital&rsquo;s consenting patients, the policies it holds, its staff and every request they made.</p>
+            <span class="pcard-go">Sign in as a hospital &rarr;</span></div>
+        </a>
+        <a class="pcard" href="/admin">
+          <div class="pcard-img"><img src="/static/art/admin.svg" alt="" class="art"><span class="pill i-mint">Admin</span></div>
+          <div class="pcard-body"><h3>Admin portal</h3><p>Run the consortium: load a dataset, manage nodes and accounts, inspect the ledger and attack the baseline.</p>
+            <span class="pcard-go">Sign in as admin &rarr;</span></div>
+        </a>
+      </div>
+    </section>
+
+    <section id="how" class="lsection split">
+      <div class="split-img"><img src="/static/art/consult.svg" alt="" class="art"></div>
+      <div class="card">
+        <span class="eyebrow">How a record is released</span>
+        <h2>Four checks between a request and the data</h2>
+        <ol class="flow">
+          <li><span class="fi i-violet">1</span><div><b>Authorisation proof</b><small>The hospital shows the patient&rsquo;s token: H(s&prime;) must equal p, retried up to k times (Algs 3&ndash;4).</small></div></li>
+          <li><span class="fi i-rose">2</span><div><b>Patient policy</b><small>Entity, role, resource, access and expiry must match the patient&rsquo;s latest policy (Eqs 8&ndash;10).</small></div></li>
+          <li><span class="fi i-sky">3</span><div><b>Consensus commit</b><small>The decision is written to the ledger through Raft; a compromised leader&rsquo;s block is rejected (Eq 11).</small></div></li>
+          <li><span class="fi i-mint">4</span><div><b>Decrypt &amp; release</b><small>Only then are the record&rsquo;s Kyber-inspired ciphertexts opened for the hospital.</small></div></li>
+        </ol>
+      </div>
+    </section>
+
+    <section id="baseline" class="lsection">
+      <div class="card banner-card">
+        <span class="pill warnc">Baseline mode</span>
+        <h2 style="margin-top:12px">Reproduced as published, flaws included</h2>
+        <p>This is the reference paper&rsquo;s design: Kyber-inspired mock encryption, hash-commitment authorisation and Raft consensus.
+          It is deliberately as insecure as that design. A captured token replayed with a fresh nonce, and a policy token copied from
+          the public ledger, are both accepted; the admin portal&rsquo;s attack lab shows it.</p>
+        <p class="muted">All names in the demo accounts are fictional.</p>
+      </div>
+    </section>
+  </main>
+
+  <script src="/static/landing.js"></script>
+</body>
+</html>
