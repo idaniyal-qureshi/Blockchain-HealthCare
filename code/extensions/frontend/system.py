@@ -287,7 +287,9 @@ class DemoSystem:
                                       resource=resource, action=action, granted=out["granted"],
                                       attempts=len(out["token"]["attempts"]), token_ok=out["token"]["passed"],
                                       policy_ok=out["policy"]["passed"], ledger_copied=bool(policy_from_ledger),
-                                      block=(out["ledger"] or {}).get("block")))
+                                      corrupt_first=int(corrupt_first), block=(out["ledger"] or {}).get("block"),
+                                      outcome=outcome(out), reason=out.get("reason"),
+                                      tampered_blocks=out.get("tampered_blocks", [])))
             self.n_requests += 1
             if len(self.requests) > MAX_REQUESTS: del self.requests[:-MAX_REQUESTS]
         return out
@@ -390,6 +392,16 @@ class DemoSystem:
             return [dict(p, token_valid=self.token_valid(hospital, p["pseud"]), policy_held=self.live_read_policy(hospital, p["pseud"]))
                     for p in self.patients()]
 
+    def requests_for(self, pseud):
+        """Requests made for one patient's record (newest first)."""
+        with self.lock:
+            return [r for r in self.requests if r["pseud"] == pseud][::-1][:HISTORY_PAGE]
+
+    def all_requests(self):
+        """Every request with the full decision detail (admin only), newest first."""
+        with self.lock:
+            return dict(requests=self.requests[::-1][:LOG_PAGE], total=self.n_requests, shown=min(len(self.requests), LOG_PAGE))
+
     def requests_by(self, username):
         with self.lock:
             return [r for r in self.requests if (r.get("by") or {}).get("username") == username][::-1][:100]
@@ -479,6 +491,14 @@ class DemoSystem:
                         contract_events=[dict(e) for e in self.contracts.events[::-1][:100]],
                         hospitals={h: dict(patients_with_token=len(d["requester"]), policies_held=len(d["policy"]))
                                    for h, d in self.hospitals.items()})
+
+
+def outcome(out):
+    """What a requester is told: granted, denied (the patient's token or policy said no), or unavailable (the checks passed or
+    were never run, but the decision could not be committed or the record could not be read)."""
+    if out["granted"]: return "granted"
+    if out["token"].get("skipped") or (out["token"]["passed"] and out["policy"]["passed"]): return "unavailable"
+    return "denied"
 
 
 def _pi(pi):

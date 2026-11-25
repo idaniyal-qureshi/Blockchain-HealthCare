@@ -30,22 +30,22 @@ const ICON = {
   user: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
 };
 const PORTALS = {
-  patient: { name: "Patient portal", badge: "Patient", img: "patient.svg", tagline: "Your vitals. Your consent.",
-    blurb: "Decide which hospital may read your wearable's record, and revoke it whenever you like.",
-    hint: "Sign in with your patient account to manage consent.",
-    nav: [["p-home", "My health", "heart", null], ["p-consent", "Consent & policies", "key", "Who may read your record"], ["p-history", "Ledger history", "list", "What the ledger records about you"]] },
-  doctor: { name: "Clinician portal", badge: "Clinician", img: "doctor.svg", tagline: "The right record, with the patient's say-so.",
-    blurb: "Every request is checked against the patient's token and policy, and the decision is committed to the ledger.",
+  patient: { name: "Patient portal", badge: "Patient", img: "patient.svg", tagline: "Your health. Your say.",
+    blurb: "See your heart-rate readings and choose which hospitals can open your record.",
+    hint: "Sign in with your patient account.",
+    nav: [["p-home", "My health", "heart", null], ["p-consent", "Sharing", "key", "Who can see your record"], ["p-history", "Activity", "clock", "Activity on your record"]] },
+  doctor: { name: "Clinician portal", badge: "Clinician", img: "doctor.svg", tagline: "Your patients' records, when they've said yes.",
+    blurb: "Open the records your patients have shared with your hospital.",
     hint: "Sign in with your hospital staff account.",
-    nav: [["d-request", "Request a record", "steth", "Request a record"], ["d-patients", "Patients", "users", "Patients & consent"], ["d-history", "My requests", "clock", "Your request history"]] },
-  hospital: { name: "Hospital portal", badge: "Hospital", img: "hospital.svg", tagline: "Your hospital's view of the consortium.",
-    blurb: "Consenting patients, the policies you hold, your staff and every request they made.",
+    nav: [["d-request", "Open a record", "steth", "Open a record"], ["d-patients", "Patients", "users", "Patients"], ["d-history", "My requests", "clock", "Your requests"]] },
+  hospital: { name: "Hospital portal", badge: "Hospital", img: "hospital.svg", tagline: "Your hospital at a glance.",
+    blurb: "Patients who share their records with you, your staff, and every request they make.",
     hint: "Sign in with your hospital records-office account.",
-    nav: [["h-home", "Dashboard", "home", "Hospital dashboard"], ["h-patients", "Patients & consent", "users", "Patients & consent"], ["h-log", "Access log", "list", "Access log"], ["h-staff", "Staff", "steth", "Staff accounts"]] },
+    nav: [["h-home", "Dashboard", "home", "Hospital dashboard"], ["h-patients", "Patients", "users", "Patients & access"], ["h-log", "Access log", "list", "Access log"], ["h-staff", "Staff", "steth", "Staff accounts"]] },
   admin: { name: "Admin portal", badge: "Administrator", img: "admin.svg", tagline: "Run the consortium.",
     blurb: "Load datasets, manage nodes and accounts, inspect the ledger, and attack the baseline.",
     hint: "Sign in with the consortium administrator account.",
-    nav: [["a-home", "Dashboard", "home", "Consortium overview"], ["a-dataset", "Dataset", "db", "Dataset"], ["a-nodes", "Nodes & consensus", "nodes", "Validator nodes"],
+    nav: [["a-home", "Dashboard", "home", "Consortium overview"], ["a-requests", "Access requests", "key", "Access requests & decisions"], ["a-dataset", "Dataset", "db", "Dataset"], ["a-nodes", "Nodes & consensus", "nodes", "Validator nodes"],
       ["a-ledger", "Ledger", "chain", "Ledger"], ["a-audit", "Audit & contracts", "audit", "Audit & smart contracts"], ["a-users", "Accounts", "user", "Portal accounts"],
       ["a-lab", "Attack lab", "shield", "Attack & benchmark lab"], ["a-figures", "Experiments", "chart", "Paper experiments"]] },
 };
@@ -66,16 +66,28 @@ async function api(method, path, body) {
   if (!r.ok) { const e = new Error(detail || `${r.status} ${r.statusText}`); e.status = r.status; throw e; }
   return data;
 }
-function toast(msg, err = false) {
+function toast(msg, err = false) {                               // slides in, then out (styles.css)
   const t = $("#toast"); t.textContent = msg.charAt(0).toUpperCase() + msg.slice(1); t.className = "toast" + (err ? " err" : "");
-  clearTimeout(toast._h); toast._h = setTimeout(() => t.classList.add("hidden"), err ? 6000 : 3000);
+  void t.offsetWidth; t.classList.add("show");
+  clearTimeout(toast._h); clearTimeout(toast._h2);
+  toast._h = setTimeout(() => { t.classList.remove("show"); toast._h2 = setTimeout(() => t.classList.add("hidden"), 350); }, err ? 6000 : 3000);
 }
+function reveal(el) {                                            // show a fresh result, replaying its entrance animation
+  el.className = "result"; void el.offsetWidth; el.classList.add("reveal");
+}
+document.addEventListener("pointerdown", (e) => {                // ripple from the pointer on every clickable control
+  const b = e.target.closest(".btn, .chip, .tab, .shortcut, .node button, .src-card");
+  if (!b || b.disabled || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const r = b.getBoundingClientRect(), d = Math.max(r.width, r.height) * 2.2, w = document.createElement("span");
+  w.className = "ripple"; w.style.cssText = `width:${d}px;height:${d}px;left:${e.clientX - r.left - d / 2}px;top:${e.clientY - r.top - d / 2}px`;
+  b.appendChild(w); w.addEventListener("animationend", () => w.remove());
+});
 async function busy(btn, fn, onError) {
   if (btn.dataset.busy) return;                                  // ignore clicks while a call is in flight
-  btn.dataset.busy = "1"; const label = btn.innerHTML; btn.disabled = true; btn.textContent = "Working…";
+  btn.dataset.busy = "1"; const label = btn.innerHTML; btn.disabled = true; btn.textContent = "Working…"; btn.classList.add("is-busy");
   try { return await fn(); }
   catch (e) { if (e.message !== "signed out") { toast(e.message, true); if (onError) onError(e); } }
-  finally { delete btn.dataset.busy; btn.disabled = false; btn.innerHTML = label; }
+  finally { delete btn.dataset.busy; btn.disabled = false; btn.innerHTML = label; btn.classList.remove("is-busy"); }
 }
 const pill = (ok, yes, no) => `<span class="pill ${ok ? "ok" : "bad"}">${esc(ok ? yes : no)}</span>`;
 const greeting = () => { const h = new Date().getHours(); return h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening"; };
@@ -87,12 +99,6 @@ function dur(seconds) {                                          // "23 h 58 min
   const h = Math.floor(m / 60), d = Math.floor(h / 24);
   if (h < 48) return `${h} h${m % 60 ? ` ${m % 60} min` : ""}`;
   return `${d} days${h % 24 ? ` ${h % 24} h` : ""}`;
-}
-function polStatus(p) {                                          // a policy row's state, in words
-  if (p.revoked) return '<span class="pill bad">revoked</span>';
-  if (p.expired) return '<span class="pill bad">expired</span>';
-  if (p.governing) return `<span class="pill ok">in force · ${esc(dur(p.expires - Date.now() / 1000))} left</span>`;
-  return '<span class="pill warnc" title="A later policy for this hospital governs (Eq. 10)">replaced</span>';
 }
 function avatar(u, cls = "") {                                   // initials on a role-coloured tile (no photos)
   const ini = (u.name || u.username || "?").split(/\s+/).filter((w) => /^[A-Za-z]/.test(w)).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
@@ -149,9 +155,9 @@ function lineChart(el, series, { yLabel = "bpm", xLabel = "time step", clip = fa
     if (cur.length) segs.push(cur);
     if (s.area) {
       defs += `<linearGradient id="${id}a${si}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${s.color}" stop-opacity=".32"/><stop offset="1" stop-color="${s.color}" stop-opacity="0"/></linearGradient>`;
-      for (const sg of segs) if (sg.length > 1) g += `<path d="M${sg.map((p) => p.map((q) => q.toFixed(1)).join(",")).join("L")}L${sg[sg.length - 1][0].toFixed(1)},${H - B}L${sg[0][0].toFixed(1)},${H - B}Z" fill="url(#${id}a${si})"/>`;
+      for (const sg of segs) if (sg.length > 1) g += `<path class="fade" d="M${sg.map((p) => p.map((q) => q.toFixed(1)).join(",")).join("L")}L${sg[sg.length - 1][0].toFixed(1)},${H - B}L${sg[0][0].toFixed(1)},${H - B}Z" fill="url(#${id}a${si})"/>`;
     }
-    g += `<path d="${d}" fill="none" stroke="${s.color}" stroke-width="${s.width || 2}" stroke-linejoin="round" stroke-linecap="round" ${s.dash ? 'stroke-dasharray="5 4"' : ""}/>`;
+    g += `<path ${s.dash ? 'class="fade"' : 'class="draw" pathLength="1"'} d="${d}" fill="none" stroke="${s.color}" stroke-width="${s.width || 2}" stroke-linejoin="round" stroke-linecap="round" ${s.dash ? 'stroke-dasharray="5 4"' : ""}/>`;
     if (s.markMissing) s.values.forEach((v, i) => { if (v === null) { missing++; g += `<circle cx="${X(i)}" cy="${H - B + 6}" r="3" fill="${C.red}"/>`; } });
   });
   g += `<text x="${(W + L) / 2}" y="${H - 1}" font-size="11" text-anchor="middle" fill="${C.muted}">${esc(xLabel)}</text>`;
@@ -210,6 +216,8 @@ async function enterApp() {
   $("#loginView").classList.add("hidden"); $("#appView").classList.remove("hidden");
   document.title = `${P.name} · HealthSafe`;
   $("#portalName").textContent = P.name;
+  $("#baselineCard").classList.toggle("hidden", PORTAL !== "admin");   // ledger, nodes and the paper's flaws: admin only
+  $("#topPills").classList.toggle("hidden", PORTAL !== "admin");
   renderUserCard();
   $("#nav").innerHTML = P.nav.map(([k, label, ic]) => `<button class="tab" data-sec="${k}" role="tab" aria-selected="false" aria-controls="sec-${k}"><svg viewBox="0 0 24 24" aria-hidden="true">${ICON[ic]}</svg><span>${esc(label)}</span></button>`).join("");
   $$("#nav .tab").forEach((t) => t.addEventListener("click", () => show(t.dataset.sec, true)));
@@ -220,7 +228,7 @@ async function enterApp() {
 }
 
 function renderUserCard() {
-  const sub = PORTAL === "patient" ? (ME.label ? `Record ${ME.label}` : "No record in this dataset")
+  const sub = PORTAL === "patient" ? (ME.label ? `Patient ${ME.label}` : "Record not available yet")
     : PORTAL === "doctor" ? `${ME.specialty} · ${ME.hospital_name}` : PORTAL === "hospital" ? ME.hospital_name : "Consortium administrator";
   $("#userCard").innerHTML = `${avatar(ME)}<div><div class="uc-name">${esc(ME.name)}</div><div class="uc-sub">${esc(sub)}</div></div>`;
 }
@@ -233,21 +241,23 @@ async function refreshCtx() {
   }
   loading(false);
   const changed = CTX && CTX.dataset_id !== ctx.dataset_id; CTX = ctx;
+  const hosp = CTX.hospitals.map((h) => `<option value="${esc(h)}">${esc(CTX.hospital_names[h])}</option>`).join("");
+  { const keep = $("#polEntity").value; $("#polEntity").innerHTML = hosp; if (keep) $("#polEntity").value = keep; }
+  if (changed) await datasetChanged();
+  if (!CTX.nodes) return;                                        // only the admin's context carries nodes, ledger and dataset
   const nd = CTX.nodes, src = $("#srcPill"), no = $("#nodesPill"), ch = $("#chainPill");
   src.textContent = CTX.source === "wildppg" ? "WildPPG recordings" : "Synthetic sensors"; src.style.setProperty("--dot", C.violet);
   no.textContent = nd.alive < nd.quorum ? `No quorum: ${nd.alive}/${nd.n} nodes alive` : `${nd.alive}/${nd.n} nodes alive`;
   no.style.setProperty("--dot", nd.alive < nd.quorum ? C.red : C.mint);
   ch.textContent = CTX.chain_valid ? "Chain valid" : "Chain broken"; ch.style.setProperty("--dot", CTX.chain_valid ? C.mint : C.red);
-  const hosp = CTX.hospitals.map((h) => `<option value="${esc(h)}">${esc(CTX.hospital_names[h])}</option>`).join("");
-  for (const id of ["#grantHosp", "#polEntity"]) { const keep = $(id).value; $(id).innerHTML = hosp; if (keep) $(id).value = keep; }
-  if (changed) await datasetChanged();
 }
 
 async function datasetChanged() {                               // the admin loaded a new dataset: new ledger, new pseudonyms
+  $("#dsBannerText").textContent = PORTAL === "admin" ? "A new dataset was loaded: the ledger, pseudonyms and consent were rebuilt."
+    : "HealthSafe was updated. Reload to see the latest information.";
   $("#dsBanner").classList.remove("hidden");
   try { ME = await api("GET", "/api/auth/me"); renderUserCard(); } catch (_) { return; }
-  $("#dResult").className = "result empty"; $("#dResult").textContent = "The dataset changed: pick a patient and send a new request.";
-  $("#dChart").innerHTML = '<div class="note">Nothing released yet.</div>'; $("#dChartNote").textContent = "";
+  clearDecision("The patient list changed. Choose a patient and try again.");
   if (SEC) (LOADERS[SEC] || (() => {}))();
 }
 
@@ -267,13 +277,27 @@ function show(sec, push = false) {
   const [, label, , title] = P.nav.find(([k]) => k === sec);
   $("#viewEyebrow").textContent = `${P.name} · ${label}`;
   $("#viewTitle").textContent = title || `${greeting()}, ${firstName(ME.name)} 👋`;
-  if (sec === "p-consent") $("#pLedger").innerHTML = "";
   refreshCtx();
   (LOADERS[sec] || (() => {}))();
 }
 
+// ------------------------------------------------------------------ plain-language labels (patient, clinician, hospital)
+const RES = { EHR: "health record", audit_logs: "access history" };
+const ACT = { read: "View", write: "Edit" };
+const WHO = { doctor: "Doctors", nurse: "Nurses", auditor: "Auditors" };
+const permText = (p) => `${ACT[p.access] || p.access} ${RES[p.resource] || p.resource} · ${WHO[p.role] || p.role}`;
+function permStatus(p) {
+  if (p.status === "active") return `<span class="pill ok">active · ${esc(dur(p.expires - Date.now() / 1000))} left</span>`;
+  if (p.status === "replaced") return '<span class="pill soft-grey">replaced</span>';
+  return `<span class="pill bad">${esc(p.status)}</span>`;
+}
+function outcomePill(o) {
+  return { granted: '<span class="pill ok">granted</span>', denied: '<span class="pill bad">denied</span>' }[o] ||
+    '<span class="pill warnc">not completed</span>';
+}
+
 // ------------------------------------------------------------------ patient
-function ledgerNote(l) {
+function ledgerNote(l) {                                         // admin only: where a change landed on the ledger
   if (!l) return "";
   if (l.block === null || l.block === undefined) return `<span class="pill bad">Not saved to the ledger: ${esc(l.error || "no quorum")}</span>`;
   const rej = l.rounds.filter((r) => !r.committed).length;
@@ -281,15 +305,14 @@ function ledgerNote(l) {
 }
 
 function patientMissing() {
-  if (!ME.record_error) return false;
-  for (const id of ["#pStats", "#pVitals", "#pTokens", "#pPolicies", "#pHist"]) $(id).innerHTML = "";
-  $$(".p-needs-record").forEach((el) => el.classList.add("hidden"));
-  $$(".p-no-record").forEach((el) => { el.classList.remove("hidden"); el.querySelector(".why").textContent = ME.record_error; });
-  return true;
+  const missing = !!ME.record_missing;
+  $$(".p-needs-record").forEach((el) => el.classList.toggle("hidden", missing));
+  $$(".p-no-record").forEach((el) => el.classList.toggle("hidden", !missing));
+  if (missing) for (const id of ["#pStats", "#pVitals", "#pAccess", "#pPolicies", "#pHist"]) $(id).innerHTML = "";
+  return missing;
 }
 
 async function patientData() {
-  $$(".p-needs-record").forEach((el) => el.classList.remove("hidden")); $$(".p-no-record").forEach((el) => el.classList.add("hidden"));
   if (patientMissing()) return null;
   try { return await api("GET", "/api/patient"); } catch (e) {
     if (e.message !== "signed out") { ME = await api("GET", "/api/auth/me").catch(() => ME); renderUserCard(); if (!patientMissing()) toast(e.message, true); }
@@ -297,155 +320,101 @@ async function patientData() {
   }
 }
 
-function patientAccess(v) {                                       // hospitals that could read the EHR right now
-  return v.token_holders.filter((t) => t.token_valid && v.policies.some((p) => p.governing && p.entity === t.hospital &&
-    p.held_by.includes(t.hospital) && p.resource === "EHR" && p.access === "read")).map((t) => t.hospital);
-}
-
 async function loadPatientHome() {
-  $("#pHello").textContent = ME.label ? `${ME.name}, record ${ME.label}` : ME.name;
-  $("#pBannerText").textContent = CTX && CTX.source === "wildppg"
-    ? "Real WildPPG recordings: four body-worn PPG sensors, with an ECG recorded alongside as the reference."
-    : "Five simulated sensors; the edge pipeline corrects faulty readings before anything is encrypted.";
+  $("#pHello").textContent = ME.name;
   const v = await patientData(); if (!v) return;
   const q = v.vitals.hr.filter((x) => x === null).length, ok = v.vitals.hr.filter((x) => x !== null);
-  const mean = ok.length ? ok.reduce((a, b) => a + b, 0) / ok.length : null, access = patientAccess(v);
+  const mean = ok.length ? ok.reduce((a, b) => a + b, 0) / ok.length : null, access = v.hospitals.filter((h) => h.has_access).map((h) => h.hospital);
   $("#pStats").innerHTML = statCards([
-    ["Average heart rate", mean === null ? "–" : `${mean.toFixed(0)} bpm`, `${ok.length} corrected readings`, "rose", "&#9829;"],
-    ["Readings set aside", q, "too noisy to correct after 3 tries", "violet", "&#9888;", q > 10],
-    ["Hospitals that can read", access.length, access.length ? access.map(hospName).join(", ") : "nobody right now", "sky", "&#9919;"],
-    ["Policies in force", v.policies.filter((p) => p.governing).length, `${v.policies.length} written in total`, "mint", "&#10010;"],
+    ["Average heart rate", mean === null ? "–" : `${mean.toFixed(0)} bpm`, `${ok.length} readings`, "rose", "&#9829;"],
+    ["Unreliable readings", q, "left out of your chart", "violet", "&#9888;", q > 10],
+    ["Hospitals with access", access.length, access.length ? access.map(hospName).join(", ") : "nobody right now", "sky", "&#9919;"],
+    ["Active permissions", v.permissions.filter((p) => p.status === "active").length, `${v.permissions.length} given in total`, "mint", "&#10010;"],
   ]);
-  const series = [{ name: "Corrected heart rate", color: C.rose, values: v.vitals.hr, markMissing: true, area: true }];
-  if (v.vitals.truth) series.push({ name: "ECG reference", color: C.violet, values: v.vitals.truth, dash: true, width: 1.6 });
-  lineChart($("#pVitals"), series, { minSpan: 20, missingLabel: "set aside (too noisy)" });
-  $("#pVitalsNote").textContent = `${v.vitals.hr.length} readings.` + (v.vitals.truth ? " The dashed line is the ECG recorded alongside, for comparison." : "");
+  const series = [{ name: "Heart rate", color: C.rose, values: v.vitals.hr, markMissing: true, area: true }];
+  if (v.vitals.reference) series.push({ name: "Reference (ECG)", color: C.violet, values: v.vitals.reference, dash: true, width: 1.6 });
+  lineChart($("#pVitals"), series, { xLabel: "reading", minSpan: 20, missingLabel: "unreliable reading" });
+  $("#pVitalsNote").textContent = `${v.vitals.hr.length} readings.` + (v.vitals.reference ? " The dashed line is an ECG reference taken at the same time." : "");
 }
 
 async function loadPatientConsent() {
   const v = await patientData(); if (!v) return;
-  $("#pTokens").innerHTML = "<tr><th scope='col'>Hospital</th><th scope='col'>Consent token</th></tr>" + (v.token_holders.length ? v.token_holders.map((t) =>
-    `<tr><td>${esc(hospName(t.hospital))}</td><td>${pill(t.token_valid, "valid", "revoked")}</td></tr>`).join("")
-    : emptyRow(2, "No hospital holds a token."));
-  $("#pPolicies").innerHTML = "<tr><th scope='col'>Hospital</th><th scope='col'>Role</th><th scope='col'>Covers</th><th scope='col'>Status</th><th scope='col'>Held by</th></tr>" +
-    (v.policies.length ? v.policies.slice().reverse().map((p) => `<tr class="${p.governing ? "" : "dim"}"><td>${esc(hospName(p.entity))}</td><td>${esc(p.role)}</td>` +
-      `<td>${esc(p.access)} ${esc(p.resource === "EHR" ? "health record" : "audit logs")}</td><td>${polStatus(p)}</td>` +
-      `<td>${esc(p.held_by.map(hospName).join(", ") || "–")}</td></tr>`).join("") : emptyRow(5, "No policies."));
+  $("#pAccess").innerHTML = "<tr><th scope='col'>Hospital</th><th scope='col'>Access</th><th scope='col'>Permission</th><th scope='col'>Time left</th><th></th></tr>" +
+    v.hospitals.map((h) => `<tr><td><b>${esc(hospName(h.hospital))}</b></td><td>${pill(h.has_access, "can see your record", "no access")}</td>` +
+      `<td>${h.current ? esc(permText(h.current)) : '<span class="muted">–</span>'}</td><td>${h.current ? esc(dur(h.current.expires - Date.now() / 1000)) : '<span class="muted">–</span>'}</td>` +
+      `<td>${h.current ? `<button class="btn danger" data-withdraw="${esc(h.hospital)}">Withdraw</button>` : ""}</td></tr>`).join("");
+  $("#pPolicies").innerHTML = "<tr><th scope='col'>Hospital</th><th scope='col'>Permission</th><th scope='col'>Status</th></tr>" +
+    (v.permissions.length ? v.permissions.map((p) => `<tr class="${p.status === "active" ? "" : "dim"}"><td>${esc(hospName(p.hospital))}</td>` +
+      `<td>${esc(permText(p))}</td><td>${permStatus(p)}</td></tr>`).join("") : emptyRow(3, "You haven't given any permissions."));
 }
 
 async function patientAction(btn, path, body, okMsg, confirmText) {
   if (confirmText && !confirm(confirmText)) return;
-  await busy(btn, async () => {
-    const r = await api("POST", `/api/patient/${path}`, body);
-    $("#pLedger").innerHTML = (r.note ? esc(r.note) + " " : "") + ledgerNote(r.ledger);
-    toast(okMsg); await loadPatientConsent();
-  });
+  await busy(btn, async () => { await api("POST", `/api/patient/${path}`, body); toast(okMsg); await loadPatientConsent(); });
 }
 
 async function loadPatientHistory() {
   if (patientMissing()) return;
   let h; try { h = await api("GET", "/api/patient/history"); } catch (e) { return; }
-  const label = { grant: ["Consent token issued", 1], policy_define: ["Policy written", 1], policy_revoke: ["Policy revoked", 0], allow: ["Token accepted", 1],
-    deny: ["Token rejected", 0], policy_allow: ["Policy check passed", 1], policy_deny: ["Policy check failed", 0], revoke: ["Token revoked", 0] };
-  $("#pHistNote").textContent = `${h.total} events`;
-  $("#pHist").innerHTML = "<tr><th scope='col'>When</th><th scope='col'>What happened</th><th scope='col'>Ledger block</th></tr>" +
-    (h.events.length ? h.events.map((e) => { const [txt, good] = label[e.event] || [e.event, 1];
-      return `<tr><td class="nowrap">${when(e.t)}</td><td><span class="pill ${good ? "ok" : "bad"}">${esc(txt)}</span></td><td>#${e.block}</td></tr>`; }).join("")
-      : emptyRow(3, "No events yet."));
+  const cls = { you: "soft", granted: "ok", denied: "bad", unavailable: "warnc" };
+  const tag = { you: "you", granted: "allowed", denied: "declined", unavailable: "not completed" };
+  $("#pHistNote").textContent = `${h.total} event${h.total === 1 ? "" : "s"}`;
+  $("#pHist").innerHTML = "<tr><th scope='col'>When</th><th scope='col'>What happened</th><th></th></tr>" +
+    (h.events.length ? h.events.map((e) => `<tr><td class="nowrap">${when(e.t)}</td><td>${esc(e.text)}</td><td><span class="pill ${cls[e.kind]}">${tag[e.kind]}</span></td></tr>`).join("")
+      : emptyRow(3, "Nothing yet."));
 }
 
 // ------------------------------------------------------------------ doctor
-const PRESETS = {
-  valid: { resource: "EHR", action: "read", corrupt: 0, ledger: false },
-  corrupt: { resource: "EHR", action: "read", corrupt: 2, ledger: false },
-  corrupt3: { resource: "EHR", action: "read", corrupt: 3, ledger: false },
-  write: { resource: "EHR", action: "write", corrupt: 0, ledger: false },
-  audit: { resource: "audit_logs", action: "read", corrupt: 0, ledger: false },
-  ledger: { resource: "EHR", action: "read", corrupt: 0, ledger: true },
-};
 let DPATS = [];
 async function loadDoctorPatients(selectOnly = false) {
   try { DPATS = await api("GET", "/api/doctor/patients"); } catch (e) { return; }
   const keep = $("#dPatient").value;
-  $("#dPatient").innerHTML = DPATS.map((p) => `<option value="${esc(p.pseud)}">${esc(p.label)}${p.token_valid && p.policy_held ? "" : !p.token_valid ? " (no consent)" : " (no policy)"}</option>`).join("");
-  if (DPATS.some((p) => p.pseud === keep)) $("#dPatient").value = keep;
-  $("#dAsWho").innerHTML = `Requesting as <b>${esc(ME.name)}</b> (${esc(ME.staff_role)}) for <b>${esc(ME.hospital_name)}</b>. ` +
-    `<span class="muted">The baseline's policy check does not look at your role, only at the hospital (a gap in the paper).</span>`;
+  $("#dPatient").innerHTML = DPATS.map((p) => `<option value="${esc(p.id)}">${esc(p.label)}${p.access ? "" : " (no access)"}</option>`).join("");
+  if (DPATS.some((p) => p.id === keep)) $("#dPatient").value = keep;
+  $("#dAsWho").innerHTML = `Signed in as <b>${esc(ME.name)}</b>, ${esc(ME.hospital_name)}.`;
   if (selectOnly) return;
-  $("#dPatients").innerHTML = "<tr><th scope='col'>Patient</th><th scope='col' class='num'>Readings</th><th scope='col'>Consent token</th><th scope='col'>Read policy</th><th scope='col'>Data</th><th></th></tr>" +
-    DPATS.map((p) => `<tr><td><b>${esc(p.label)}</b></td><td class="num">${p.n_records}</td>` +
-      `<td>${pill(p.token_valid, "valid", "none / revoked")}</td><td>${pill(p.policy_held, "in force", "none")}</td><td>${p.has_truth ? "WildPPG + ECG" : "synthetic"}</td>` +
-      `<td><button class="btn" data-req="${esc(p.pseud)}">Request</button></td></tr>`).join("");
+  $("#dPatients").innerHTML = "<tr><th scope='col'>Patient</th><th scope='col' class='num'>Readings</th><th scope='col'>Health record</th><th></th></tr>" +
+    DPATS.map((p) => `<tr><td><b>${esc(p.label)}</b></td><td class="num">${p.n_records}</td><td>${pill(p.access, "you can open it", "not shared with you")}</td>` +
+      `<td><button class="btn" data-req="${esc(p.id)}">Open</button></td></tr>`).join("");
 }
 
-function piText(p) {
-  if (!p) return "none";
-  return `⟨${esc(p.entity)}, ${esc(p.role)}, ${esc(p.resource)}, ${esc(p.access)}, ${p.expired ? "expired" : "valid"}⟩`;
-}
 function clearDecision(msg) {
   $("#dResult").className = "result empty"; $("#dResult").textContent = msg;
-  $("#dChart").innerHTML = '<div class="note">Nothing released yet.</div>'; $("#dChartNote").textContent = "";
+  $("#dChart").innerHTML = '<div class="note">No record open.</div>'; $("#dChartNote").textContent = "";
 }
 
 async function doRequest(btn) {
-  const body = { pseud: $("#dPatient").value, resource: $("#dRes").value, action: $("#dAct").value,
-    corrupt_first: intIn("#dCorrupt", 0, 5, 0), policy_from_ledger: $("#dLedgerPol").checked };
-  $$(".chip[data-preset]").forEach((c) => { c.disabled = true; });
+  const body = { pseud: $("#dPatient").value, resource: $("#dRes").value, action: $("#dAct").value };
   await busy(btn, async () => {
     const r = await api("POST", "/api/doctor/request", body);
-    const tok = r.token, pol = r.policy, led = r.ledger;
-    const attempts = tok.attempts.map((a) => `<div class="sub">attempt ${a.attempt}: ${a.corrupted ? "corrupted in transit, " : ""}` +
-      `H(s′) ${a.hash_matches ? "= p ✓" : "≠ p ✗"} · token sent in clear <span class="mono">${esc(a.token_sent)}</span></div>`).join("");
-    const round = (x) => x.leader === null ? "no leader could be elected: too few nodes alive" :
-      `leader node ${x.leader}${x.compromised_leader ? " (compromised)" : ""}: ${x.committed ? `committed in ${fmt(x.latency_ms, 2)} ms, ${x.msgs} messages` : "block rejected by honest validators"}`;
-    const committed = led && led.block !== null && led.block !== undefined;
-    const steps = tok.skipped ? [                                  // no quorum: the server refused before running any check
-      { cls: "skip", title: "1. Authorisation proof (Algs. 3–4)", body: '<div class="sub">Not run.</div>' },
-      { cls: "skip", title: "2. Patient policy (Eqs. 8–10)", body: '<div class="sub">Not run.</div>' },
-      { cls: "fail", title: "3. Decision committed through consensus (audit trail)", body: `<div class="sub">${ledgerNote(led)}</div>` },
-      { cls: "skip", title: "4. Decrypt and release the record", body: '<div class="sub">Not reached.</div>' },
-    ] : [
-      { cls: tok.passed ? "pass" : "fail", title: `1. Authorisation proof (Alg. 3, retry up to k = ${tok.k}, Alg. 4)`,
-        body: attempts + `<div class="sub">${tok.passed ? "accepted" : "rejected"} in ${fmt(tok.ms, 4)} ms</div>` },
-      { cls: pol.passed ? "pass" : "fail", title: "2. Patient policy (Eqs. 8–10)",
-        body: `<div class="sub">policy token: ${esc(pol.source)}</div><div class="sub">matched policy: ${piText(pol.matched)}</div>` +
-          `<div class="sub">governing policy (Eq. 10, latest t_e): ${piText(pol.governing)}</div>` },
-      { cls: committed ? "pass" : "fail", title: "3. Decision committed through consensus (audit trail)",
-        body: `<div class="sub">${ledgerNote(led)}</div>` + (led ? led.rounds.map((x) => `<div class="sub">${esc(round(x))}</div>`).join("") : "") },
-      { cls: r.record ? "pass" : "skip", title: "4. Decrypt and release the record",
-        body: r.record ? `<div class="sub">${r.record.n_ciphertexts} ciphertexts decrypted in ${fmt(r.record.decrypt_ms, 2)} ms</div>`
-          : `<div class="sub">${r.tampered_blocks ? "Integrity check failed: the ledger copy was tampered with." : r.granted ? "Granted, but only a health-record read releases data." : "Not reached."}</div>` },
-    ];
-    $("#dResult").className = "result";
-    $("#dResult").innerHTML = `<div class="verdict">${r.granted ? '<span class="pill ok">ACCESS GRANTED</span>' : '<span class="pill bad">ACCESS DENIED</span>'}` +
-      `<span class="muted" style="font-size:13px;font-weight:400">${esc(hospName(r.hospital))} → ${esc(r.patient)}, ${esc(r.action)} ${esc(r.resource)}</span></div>` +
-      (r.reason ? `<div class="reason">${esc(r.reason)}</div>` : "") +
-      `<ul class="steps">${steps.map((s) => `<li class="${s.cls}"><div class="step-title">${s.title}</div>${s.body}</li>`).join("")}</ul>` +
-      (body.policy_from_ledger && pol.passed ? '<div class="note"><span class="pill warnc">Paper flaw</span> The policy token is stored on the public ledger (Eq. 9), so anyone who reads the ledger can submit it.</div>' : "");
+    const what = `${ACT[r.action].toLowerCase()} ${r.patient}'s ${RES[r.resource]}`;
+    const msg = { granted: r.record ? `You can ${what}.` : `You can ${what}. There is nothing to display for this request.`,
+      denied: `You don't have access to ${what}.`,
+      unavailable: "The request could not be completed right now. Please try again shortly." }[r.status];
+    reveal($("#dResult"));
+    $("#dResult").innerHTML = `<div class="verdict">${r.status === "granted" ? '<span class="pill ok">ACCESS GRANTED</span>' : r.status === "denied" ? '<span class="pill bad">ACCESS DENIED</span>' : '<span class="pill warnc">TRY AGAIN LATER</span>'}</div>` +
+      `<p class="muted">${esc(msg)}</p>`;
     if (r.record) {
-      const s = [{ name: "Decrypted heart rate", color: C.rose, values: r.record.hr, markMissing: true, area: true }];
-      if (r.record.truth) s.push({ name: "ECG reference", color: C.violet, values: r.record.truth, dash: true, width: 1.6 });
-      lineChart($("#dChart"), s, { minSpan: 20, missingLabel: "set aside (too noisy)" }); $("#dChartNote").textContent = `${r.record.hr.length} readings released to ${hospName(r.hospital)}.`;
-    } else { $("#dChart").innerHTML = '<div class="note">Nothing released.</div>'; $("#dChartNote").textContent = ""; }
+      const s = [{ name: "Heart rate", color: C.rose, values: r.record.hr, markMissing: true, area: true }];
+      if (r.record.reference) s.push({ name: "Reference (ECG)", color: C.violet, values: r.record.reference, dash: true, width: 1.6 });
+      lineChart($("#dChart"), s, { xLabel: "reading", minSpan: 20, missingLabel: "unreliable reading" });
+      $("#dChartNote").textContent = `${r.patient} · ${r.record.hr.length} readings.`;
+    } else { $("#dChart").innerHTML = '<div class="note">No record open.</div>'; $("#dChartNote").textContent = ""; }
   }, async (e) => {
-    if (/unknown patient/.test(e.message)) {                     // the admin reloaded the dataset under us
-      await loadDoctorPatients(true); clearDecision("The dataset was reloaded, so the patient list changed. Pick a patient again.");
-    }
+    if (/unknown patient/.test(e.message)) { await loadDoctorPatients(true); clearDecision("The patient list changed. Choose a patient again."); }
   });
-  $$(".chip[data-preset]").forEach((c) => { c.disabled = false; });
 }
 
 function reqRows(rows, withWho) {
-  return rows.map((r) => `<tr class="${r.granted ? "" : "flag"}"><td class="nowrap">${when(r.t)}</td>${withWho ? `<td>${esc(r.by ? r.by.name : "–")} <span class="muted">${esc(r.by ? r.by.role : "")}</span></td>` : ""}` +
-    `<td class="nowrap"><b>${esc(r.patient)}</b></td><td>${esc(r.action)} ${esc(r.resource)}${r.ledger_copied ? ' <span class="pill warnc">ledger token</span>' : ""}</td>` +
-    `<td>${pill(r.token_ok, `token ✓${r.attempts > 1 ? ` (${r.attempts} tries)` : ""}`, "token ✗")} ${pill(r.policy_ok, "policy ✓", "policy ✗")}</td>` +
-    `<td>${pill(r.granted, "granted", "denied")}</td><td>${r.block === null || r.block === undefined ? "not saved" : "#" + r.block}</td></tr>`).join("");
+  return rows.map((r) => `<tr class="${r.outcome === "granted" ? "" : "flag"}"><td class="nowrap">${when(r.t)}</td>` +
+    (withWho ? `<td>${esc(r.by ? r.by.name : "–")} <span class="muted">${esc(r.by ? r.by.role : "")}</span></td>` : "") +
+    `<td class="nowrap"><b>${esc(r.patient)}</b></td><td>${esc(ACT[r.action])} ${esc(RES[r.resource])}</td><td>${outcomePill(r.outcome)}</td></tr>`).join("");
 }
 
 async function loadDoctorHistory() {
   let rows; try { rows = await api("GET", "/api/doctor/history"); } catch (e) { return; }
-  $("#dHist").innerHTML = "<tr><th scope='col'>Time</th><th scope='col'>Patient</th><th scope='col'>Request</th><th scope='col'>Checks</th><th scope='col'>Decision</th><th scope='col'>Audit block</th></tr>" +
-    (rows.length ? reqRows(rows, false) : emptyRow(6, "No requests yet."));
+  $("#dHist").innerHTML = "<tr><th scope='col'>Time</th><th scope='col'>Patient</th><th scope='col'>Request</th><th scope='col'>Result</th></tr>" +
+    (rows.length ? reqRows(rows, false) : emptyRow(4, "No requests yet."));
 }
 
 // ------------------------------------------------------------------ hospital
@@ -454,40 +423,39 @@ async function hospitalData() { try { HV = await api("GET", "/api/hospital"); } 
 
 async function loadHospitalHome() {
   const v = await hospitalData(); if (!v) return;
-  $("#hName").textContent = v.name; $("#hCode").textContent = `Consortium member · ${v.hospital}`;
-  const s = v.stats, nd = v.nodes;
+  $("#hName").textContent = v.name; $("#hCode").textContent = "Your hospital";
+  const s = v.stats;
   $("#hStats").innerHTML = statCards([
-    ["Patients readable now", `${s.readable}/${s.patients}`, `${s.consenting} hold a valid token for us`, "violet", "&#9786;"],
-    ["Requests", s.requests, `since ${clock(v.since)}, when the dataset was loaded`, "sky", "&#9776;"],
-    ["Granted", s.granted, "records released", "mint", "&#10003;"],
-    ["Denied", s.denied, "refused by token, policy or ledger", "rose", "&#10007;", s.denied > 0],
+    ["Records you can open", `${s.readable}/${s.patients}`, `${s.sharing} patient${s.sharing === 1 ? "" : "s"} share with you`, "violet", "&#9786;"],
+    ["Requests", s.requests, `since ${clock(v.since)}`, "sky", "&#9776;"],
+    ["Granted", s.granted, "records opened", "mint", "&#10003;"],
+    ["Not granted", s.denied, "denied or not completed", "rose", "&#10007;", s.denied > 0],
   ]);
-  $("#hRecent").innerHTML = v.requests.length ? `<table class="tbl"><tr><th scope="col">Time</th><th scope="col">By</th><th scope="col">Patient</th><th scope="col">Decision</th></tr>` +
-    v.requests.slice(0, 6).map((r) => `<tr><td class="nowrap">${when(r.t)}</td><td>${esc(r.by ? r.by.name : "–")}</td><td>${esc(r.patient)}</td><td>${pill(r.granted, "granted", "denied")}</td></tr>`).join("") + "</table>"
-    : `<div class="note">No requests since the dataset was loaded at ${clock(v.since)}. They appear here when your staff use the clinician portal.</div>`;
+  $("#hRecent").innerHTML = v.requests.length ? `<table class="tbl"><tr><th scope="col">Time</th><th scope="col">By</th><th scope="col">Patient</th><th scope="col">Result</th></tr>` +
+    v.requests.slice(0, 6).map((r) => `<tr><td class="nowrap">${when(r.t)}</td><td>${esc(r.by ? r.by.name : "–")}</td><td>${esc(r.patient)}</td><td>${outcomePill(r.outcome)}</td></tr>`).join("") + "</table>"
+    : '<div class="note">No requests yet. They appear here when your staff open records.</div>';
   $("#hStaffMini").innerHTML = v.staff.map((m) => `<div class="staff-row${m.disabled ? " off" : ""}">${avatar(m)}<div><b>${esc(m.name)}</b>${m.disabled ? ' <span class="pill bad">disabled</span>' : ""}<div class="sub">${esc(m.specialty)} · ${esc(m.staff_role)}</div></div></div>`).join("") ||
     '<div class="note">No staff accounts.</div>';
-  $("#hStaffMini").insertAdjacentHTML("beforeend", `<div class="note">Ledger: ${v.blocks} blocks, ${v.chain_valid ? "valid" : "BROKEN"} · nodes ${nd.alive}/${nd.n} alive (quorum ${nd.quorum}).</div>`);
-  if (s.consenting === 0) $("#hRecent").insertAdjacentHTML("afterbegin", `<div class="callout">No patient has given ${esc(v.name)} a consent token yet. Patients grant access from the patient portal; until then every request is refused.</div>`);
+  if (s.sharing === 0) $("#hRecent").insertAdjacentHTML("afterbegin", `<div class="callout">No patient shares their record with ${esc(v.name)} yet.</div>`);
 }
 
 async function loadHospitalPatients() {
   const v = await hospitalData(); if (!v) return;
-  const none = v.stats.consenting === 0;
-  $("#hPatientsNote").innerHTML = none ? `<div class="callout">No patient has given ${esc(v.name)} a consent token yet. Patients grant it from their portal.</div>` : "";
-  $("#hPatients").innerHTML = "<tr><th scope='col'>Patient</th><th scope='col'>Readable now</th><th scope='col'>Consent token</th><th scope='col'>Policies for us</th><th scope='col'>Data</th></tr>" +
-    v.patients.map((p) => `<tr class="${p.readable || none ? "" : "flag"}"><td><b>${esc(p.label)}</b></td><td>${pill(p.readable, "yes", "no")}</td>` +
-      `<td>${p.token_held ? pill(p.token_valid, "valid", "revoked") : '<span class="pill soft-grey">not granted</span>'}</td>` +
-      `<td>${p.policies.length ? p.policies.slice().reverse().map((x) => `<div class="pol-line">${esc(x.role)} · ${esc(x.access)} ${esc(x.resource)} ${polStatus(x)}${x.held ? "" : ' <span class="muted">(not held)</span>'}</div>`).join("") : '<span class="muted">none</span>'}</td>` +
-      `<td>${p.has_truth ? "WildPPG + ECG" : "synthetic"}</td></tr>`).join("");
+  const none = v.stats.sharing === 0;
+  $("#hPatientsNote").innerHTML = none ? `<div class="callout">No patient shares their record with ${esc(v.name)} yet. Patients give access from their own HealthSafe account.</div>` : "";
+  const share = { shared: '<span class="pill ok">shared</span>', withdrawn: '<span class="pill bad">withdrawn</span>', "not shared": '<span class="pill soft-grey">not shared</span>' };
+  $("#hPatients").innerHTML = "<tr><th scope='col'>Patient</th><th scope='col'>Health record</th><th scope='col'>Sharing</th><th scope='col'>Permissions</th></tr>" +
+    v.patients.map((p) => `<tr class="${p.can_view || none ? "" : "flag"}"><td><b>${esc(p.label)}</b></td><td>${pill(p.can_view, "can open", "cannot open")}</td>` +
+      `<td>${share[p.sharing]}</td>` +
+      `<td>${p.permissions.length ? p.permissions.map((x) => `<div class="pol-line">${esc(permText(x))} ${permStatus(x)}</div>`).join("") : '<span class="muted">none</span>'}</td></tr>`).join("");
 }
 
 async function loadHospitalLog() {
   const v = await hospitalData(); if (!v) return;
   $("#hLogNote").textContent = v.stats.requests > v.requests_shown ? `Showing the latest ${v.requests_shown} of ${v.stats.requests} requests.`
-    : `${v.stats.requests} request${v.stats.requests === 1 ? "" : "s"} since the dataset was loaded at ${clock(v.since)}.`;
-  $("#hLog").innerHTML = "<tr><th scope='col'>Time</th><th scope='col'>Staff</th><th scope='col'>Patient</th><th scope='col'>Request</th><th scope='col'>Checks</th><th scope='col'>Decision</th><th scope='col'>Audit block</th></tr>" +
-    (v.requests.length ? reqRows(v.requests, true) : emptyRow(7, "No requests yet."));
+    : `${v.stats.requests} request${v.stats.requests === 1 ? "" : "s"} since ${clock(v.since)}.`;
+  $("#hLog").innerHTML = "<tr><th scope='col'>Time</th><th scope='col'>Staff</th><th scope='col'>Patient</th><th scope='col'>Request</th><th scope='col'>Result</th></tr>" +
+    (v.requests.length ? reqRows(v.requests, true) : emptyRow(5, "No requests yet."));
 }
 
 async function loadHospitalStaff() {
@@ -496,6 +464,82 @@ async function loadHospitalStaff() {
     `<div class="sub">${esc(m.specialty)}</div><div class="row" style="justify-content:center;margin-top:10px"><span class="pill i-violet">${esc(m.staff_role)}</span>` +
     `<span class="pill soft">${v.per_staff[m.username] || 0} requests</span>${m.disabled ? '<span class="pill bad">disabled</span>' : ""}</div><div class="mono muted" style="margin-top:8px">${esc(m.username)}</div></div>`).join("") ||
     '<div class="card note">No staff accounts for this hospital.</div>';
+}
+
+// ------------------------------------------------------------------ admin: access requests and the reasons behind them
+const PRESETS = {
+  valid: { resource: "EHR", action: "read", corrupt: 0, ledger: false },
+  corrupt: { resource: "EHR", action: "read", corrupt: 2, ledger: false },
+  corrupt3: { resource: "EHR", action: "read", corrupt: 3, ledger: false },
+  write: { resource: "EHR", action: "write", corrupt: 0, ledger: false },
+  audit: { resource: "audit_logs", action: "read", corrupt: 0, ledger: false },
+  ledger: { resource: "EHR", action: "read", corrupt: 0, ledger: true },
+};
+function piText(p) {
+  if (!p) return "none";
+  return `⟨${esc(p.entity)}, ${esc(p.role)}, ${esc(p.resource)}, ${esc(p.access)}, ${p.expired ? "expired" : "valid"}⟩`;
+}
+
+function decisionHtml(r, fromLedger) {                           // the full step-by-step decision (admin only)
+  const tok = r.token, pol = r.policy, led = r.ledger;
+  const attempts = tok.attempts.map((a) => `<div class="sub">attempt ${a.attempt}: ${a.corrupted ? "corrupted in transit, " : ""}` +
+    `H(s′) ${a.hash_matches ? "= p ✓" : "≠ p ✗"} · token sent in clear <span class="mono">${esc(a.token_sent)}</span></div>`).join("");
+  const round = (x) => x.leader === null ? "no leader could be elected: too few nodes alive" :
+    `leader node ${x.leader}${x.compromised_leader ? " (compromised)" : ""}: ${x.committed ? `committed in ${fmt(x.latency_ms, 2)} ms, ${x.msgs} messages` : "block rejected by honest validators"}`;
+  const committed = led && led.block !== null && led.block !== undefined;
+  const steps = tok.skipped ? [
+    { cls: "skip", title: "1. Authorisation proof (Algs. 3–4)", body: '<div class="sub">Not run.</div>' },
+    { cls: "skip", title: "2. Patient policy (Eqs. 8–10)", body: '<div class="sub">Not run.</div>' },
+    { cls: "fail", title: "3. Decision committed through consensus (audit trail)", body: `<div class="sub">${ledgerNote(led)}</div>` },
+    { cls: "skip", title: "4. Decrypt and release the record", body: '<div class="sub">Not reached.</div>' },
+  ] : [
+    { cls: tok.passed ? "pass" : "fail", title: `1. Authorisation proof (Alg. 3, retry up to k = ${tok.k}, Alg. 4)`,
+      body: attempts + `<div class="sub">${tok.passed ? "accepted" : "rejected"} in ${fmt(tok.ms, 4)} ms</div>` },
+    { cls: pol.passed ? "pass" : "fail", title: "2. Patient policy (Eqs. 8–10)",
+      body: `<div class="sub">policy token: ${esc(pol.source)}</div><div class="sub">matched policy: ${piText(pol.matched)}</div>` +
+        `<div class="sub">governing policy (Eq. 10, latest t_e): ${piText(pol.governing)}</div>` },
+    { cls: committed ? "pass" : "fail", title: "3. Decision committed through consensus (audit trail)",
+      body: `<div class="sub">${ledgerNote(led)}</div>` + (led ? led.rounds.map((x) => `<div class="sub">${esc(round(x))}</div>`).join("") : "") },
+    { cls: r.record ? "pass" : "skip", title: "4. Decrypt and release the record",
+      body: r.record ? `<div class="sub">${r.record.n_ciphertexts} ciphertexts decrypted in ${fmt(r.record.decrypt_ms, 2)} ms</div>`
+        : `<div class="sub">${r.tampered_blocks ? "Integrity check failed: the ledger copy was tampered with." : r.granted ? "Granted, but only a health-record read releases data." : "Not reached."}</div>` },
+  ];
+  return `<div class="verdict">${r.granted ? '<span class="pill ok">ACCESS GRANTED</span>' : '<span class="pill bad">ACCESS DENIED</span>'}` +
+    `<span class="muted" style="font-size:13px;font-weight:400">${esc(hospName(r.hospital))} → ${esc(r.patient)}, ${esc(r.action)} ${esc(r.resource)}</span></div>` +
+    (r.reason ? `<div class="reason">${esc(r.reason)}</div>` : "") +
+    `<ul class="steps">${steps.map((s) => `<li class="${s.cls}"><div class="step-title">${s.title}</div>${s.body}</li>`).join("")}</ul>` +
+    (fromLedger && pol.passed ? '<div class="note"><span class="pill warnc">Paper flaw</span> The policy token is stored on the public ledger (Eq. 9), so anyone who reads the ledger can submit it.</div>' : "");
+}
+
+async function loadAdminRequests() {
+  let rq, ov; try { [rq, ov] = await Promise.all([api("GET", "/api/admin/requests"), api("GET", "/api/admin/overview")]); } catch (e) { return; }
+  const keepP = $("#tPatient").value, keepH = $("#tHosp").value;
+  $("#tPatient").innerHTML = ov.patients.map((p) => `<option value="${esc(p.pseud)}">${esc(p.label)}</option>`).join("");
+  if (ov.patients.some((p) => p.pseud === keepP)) $("#tPatient").value = keepP;
+  $("#tHosp").innerHTML = CTX.hospitals.map((h) => `<option value="${esc(h)}">${esc(hospName(h))}</option>`).join("");
+  if (keepH) $("#tHosp").value = keepH;
+  $("#aReqNote").textContent = rq.total > rq.shown ? `Latest ${rq.shown} of ${rq.total}` : `${rq.total} request${rq.total === 1 ? "" : "s"}`;
+  $("#aReqs").innerHTML = "<tr><th scope='col'>Time</th><th scope='col'>Hospital</th><th scope='col'>By</th><th scope='col'>Patient</th><th scope='col'>Request</th>" +
+    "<th scope='col'>Checks</th><th scope='col'>Result</th><th scope='col'>Reason</th><th scope='col'>Block</th></tr>" +
+    (rq.requests.length ? rq.requests.map((r) => `<tr class="${r.granted ? "" : "flag"}"><td class="nowrap">${when(r.t)}</td><td>${esc(hospName(r.hospital))}</td>` +
+      `<td>${esc(r.by ? r.by.name : "–")} <span class="muted">${esc(r.by ? r.by.role : "")}</span></td><td class="nowrap"><b>${esc(r.patient)}</b></td>` +
+      `<td>${esc(r.action)} ${esc(r.resource)}${r.ledger_copied ? ' <span class="pill warnc">ledger token</span>' : ""}${r.corrupt_first ? ` <span class="pill soft">${r.corrupt_first} corrupted</span>` : ""}</td>` +
+      `<td class="nowrap">${pill(r.token_ok, `token ✓${r.attempts > 1 ? ` (${r.attempts} tries)` : ""}`, "token ✗")} ${pill(r.policy_ok, "policy ✓", "policy ✗")}</td>` +
+      `<td>${outcomePill(r.outcome)}</td><td class="why-cell">${esc(r.reason || "All checks passed and the decision was committed.")}</td>` +
+      `<td>${r.block === null || r.block === undefined ? "not saved" : "#" + r.block}</td></tr>`).join("") : emptyRow(9, "No requests yet."));
+}
+
+async function testRequest(btn) {
+  const fromLedger = $("#tLedgerPol").checked;
+  const body = { hospital: $("#tHosp").value, pseud: $("#tPatient").value, resource: $("#tRes").value, action: $("#tAct").value,
+    corrupt_first: intIn("#tCorrupt", 0, 5, 0), policy_from_ledger: fromLedger };
+  $$(".chip[data-preset]").forEach((c) => { c.disabled = true; });
+  await busy(btn, async () => {
+    const r = await api("POST", "/api/admin/request", body);
+    reveal($("#tResult")); $("#tResult").innerHTML = decisionHtml(r, fromLedger);
+    loadAdminRequests();
+  }, async (e) => { if (/unknown patient/.test(e.message)) loadAdminRequests(); });
+  $$(".chip[data-preset]").forEach((c) => { c.disabled = false; });
 }
 
 // ------------------------------------------------------------------ admin
@@ -509,7 +553,7 @@ async function loadAdminHome() {
     ["Validator nodes", `${nd.alive}/${nd.n}`, `quorum ${nd.quorum}` + (nd.alive < nd.quorum ? " — no quorum" : ""), "mint", "&#9673;", nd.alive < nd.quorum],
     ["Chain", ov.chain_valid ? "Valid" : "Broken", ov.chain_valid ? "every hash link checks" : "tampering detected", "rose", "&#128279;", !ov.chain_valid],
   ]);
-  const sc = [["a-dataset", "Dataset", `Loaded: ${ov.config.source}, ${ov.patients.length} patients × ${ov.config.n_steps} readings.`, "violet", "&#8681;"],
+  const sc = [["a-requests", "Access requests", "Why each request was granted or refused, and test scenarios.", "sky", "&#9776;"], ["a-dataset", "Dataset", `Loaded: ${ov.config.source}, ${ov.patients.length} patients × ${ov.config.n_steps} readings.`, "violet", "&#8681;"],
     ["a-nodes", "Nodes & consensus", `${nd.alive} of ${nd.n} alive, term ${nd.term}.`, "mint", "&#9673;"],
     ["a-lab", "Attack lab", "Run the seven attacks and the benchmarks.", "rose", "&#9888;"]];
   $("#aShortcuts").innerHTML = sc.map(([k, t, d, ic, g]) => `<button class="card shortcut" data-go="${k}"><span class="ic i-${ic}" aria-hidden="true">${g}</span><div><b>${t}</b><div class="sub">${esc(d)}</div></div><span class="go" aria-hidden="true">&rarr;</span></button>`).join("");
@@ -627,7 +671,7 @@ const failed = (sel) => () => { const el = $(sel); el.className = "result empty"
 async function runAttacks(btn) {
   await busy(btn, async () => {
     const r = await api("POST", "/api/lab/attacks", { n: intIn("#lAttN", 10, 1000, 100) });
-    $("#lAttacks").className = "result";
+    reveal($("#lAttacks"));
     $("#lAttacks").innerHTML = `<div class="bigstat"><div><div class="v ${r.fp_rate > 0 ? "badv" : "okv"}">${r.fp_rate}%</div><div class="k">false-positive rate (attacks accepted)</div></div>` +
       `<div><div class="v okv">${r.fn_rate}%</div><div class="k">false-negative rate (${r.legitimate.accepted}/${r.legitimate.attempts} legitimate accepted)</div></div></div>` +
       "<div class='scroll-x'><table class='tbl'><tr><th scope='col'>Attack</th><th scope='col'>Defence in the paper</th><th scope='col' class='num'>Accepted</th><th></th></tr>" +
@@ -640,7 +684,7 @@ async function runAttacks(btn) {
 async function runVerify(btn) {
   await busy(btn, async () => {
     const r = await api("POST", "/api/lab/bench/verify", { n: intIn("#lVerN", 10, 2000, 500) });
-    const el = $("#lVerify"); el.className = "result";
+    const el = $("#lVerify"); reveal(el);
     el.innerHTML = `<div class="bigstat"><div><div class="v">${fmt(r.auth.mean, 4)} ms</div><div class="k">proof verification (paper ≈ ${r.paper_auth_ms} ms)</div></div>` +
       `<div><div class="v">${fmt(r.rbac.mean, 4)} ms</div><div class="k">smart-contract RBAC</div></div></div><div class="chart" id="lVerChart"></div>`;
     lineChart($("#lVerChart"), [{ name: "Authorisation proof", color: C.violet, values: r.series.auth, width: 1.4 }, { name: "RBAC", color: C.amber, values: r.series.rbac, width: 1.4 }], { yLabel: "ms", xLabel: "request", clip: true });
@@ -649,7 +693,7 @@ async function runVerify(btn) {
 async function runCrypto(btn) {
   await busy(btn, async () => {
     const r = await api("POST", "/api/lab/bench/crypto", { n: intIn("#lCryN", 10, 500, 100) });
-    const el = $("#lCrypto"); el.className = "result";
+    const el = $("#lCrypto"); reveal(el);
     el.innerHTML = "<table class='tbl'><tr><th scope='col'>Scheme</th><th scope='col' class='num'>Enc ms</th><th scope='col' class='num'>Dec ms</th><th scope='col' class='num'>Bytes</th></tr>" +
       r.schemes.map((s) => `<tr><td>${esc(s.scheme)}</td><td class="num">${fmt(s.enc.mean, 4)}</td><td class="num">${fmt(s.dec.mean, 4)}</td><td class="num">${s.bytes}</td></tr>`).join("") +
       "</table><div class='note'>The Kyber-inspired mock is a cost model only: its key can be rebuilt from public data.</div>";
@@ -660,7 +704,7 @@ async function runCons(btn) {
   const n = intIn("#lConsN", 4, top, 100), crashed = intIn("#lConsC", 0, n - 1, 0);
   await busy(btn, async () => {
     const r = await api("POST", "/api/lab/bench/consensus", { proto, n, mode: $("#lConsM").value, rounds: 30, crashed });
-    const el = $("#lCons"); el.className = "result";
+    const el = $("#lCons"); reveal(el);
     el.innerHTML = r.latency ? `<div class="bigstat"><div><div class="v">${fmt(r.latency.mean, 2)} ms</div><div class="k">latency per block</div></div>` +
       `<div><div class="v">${fmt(r.tps.mean, 0)}</div><div class="k">TPS (20 tx/block)</div></div></div>` +
       `<div class="note">${esc(r.proto)}, ${r.n} nodes: ${r.committed}/${r.rounds} rounds committed · quorum ${r.quorum} · ${fmt(r.msgs, 0)} messages/block</div>`
@@ -690,7 +734,7 @@ const LOADERS = {
   "p-home": loadPatientHome, "p-consent": loadPatientConsent, "p-history": loadPatientHistory,
   "d-request": () => loadDoctorPatients(true), "d-patients": () => loadDoctorPatients(false), "d-history": loadDoctorHistory,
   "h-home": loadHospitalHome, "h-patients": loadHospitalPatients, "h-log": loadHospitalLog, "h-staff": loadHospitalStaff,
-  "a-home": loadAdminHome, "a-dataset": () => loadDataset(true), "a-nodes": loadNodes, "a-ledger": loadLedger, "a-audit": loadAudit, "a-users": loadUsers,
+  "a-home": loadAdminHome, "a-requests": loadAdminRequests, "a-dataset": () => loadDataset(true), "a-nodes": loadNodes, "a-ledger": loadLedger, "a-audit": loadAudit, "a-users": loadUsers,
   "a-figures": loadFigures,
 };
 
@@ -705,27 +749,29 @@ function wire() {
   window.addEventListener("hashchange", () => { if (ME && location.hash.slice(1) !== SEC) show(location.hash.slice(1)); });
   document.addEventListener("visibilitychange", () => { if (!document.hidden && ME) tick(); });
   // patient
-  $("#grantBtn").addEventListener("click", (e) => patientAction(e.currentTarget, "grant", { hospital: $("#grantHosp").value }, `Consent token given to ${hospName($("#grantHosp").value)}`));
-  $("#revokeTokBtn").addEventListener("click", (e) => patientAction(e.currentTarget, "revoke-token", null, "Every hospital's token is now revoked",
-    "Revoke consent for ALL hospitals? Your device issues a new secret, so every token held today stops working. Hospitals you still trust need a new token afterwards."));
-  $("#polDefBtn").addEventListener("click", (e) => {
-    const min = Number($("#polTtl").value);
-    if (!Number.isFinite(min) || min < 1 || min > 525600) { toast("Valid for must be between 1 minute and 1 year (525600 minutes).", true); $("#polTtl").focus(); return; }
-    patientAction(e.currentTarget, "policy", { entity: $("#polEntity").value, role: $("#polRole").value, resource: $("#polRes").value, access: $("#polAccess").value,
-      ttl_s: Math.round(min) * 60 }, `Policy written for ${hospName($("#polEntity").value)}`);
+  $("#shareBtn").addEventListener("click", (e) => {
+    const h = $("#polEntity").value, ttl = Number($("#polTtl").value);
+    patientAction(e.currentTarget, "share", { entity: h, role: $("#polRole").value, resource: $("#polRes").value, access: $("#polAccess").value, ttl_s: ttl },
+      `${hospName(h)} now has access`);
   });
-  $("#polRevBtn").addEventListener("click", (e) => patientAction(e.currentTarget, "revoke-policy", { hospital: $("#polEntity").value, resource: $("#polRes").value },
-    "Policy revoked", `Revoke ${hospName($("#polEntity").value)}'s ${$("#polRes").value === "EHR" ? "health-record" : "audit-log"} policy?`));
+  $("#pAccess").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-withdraw]"); if (!b) return;
+    patientAction(b, "withdraw", { hospital: b.dataset.withdraw }, `${hospName(b.dataset.withdraw)}'s access was withdrawn`,
+      `Withdraw ${hospName(b.dataset.withdraw)}'s access to your record?`);
+  });
+  $("#revokeTokBtn").addEventListener("click", (e) => patientAction(e.currentTarget, "revoke-token", null, "You stopped sharing with every hospital",
+    "Stop sharing with every hospital? No hospital can open your record until you give access again."));
   // doctor
   $("#dReqBtn").addEventListener("click", (e) => doRequest(e.currentTarget));
-  $$(".chip[data-preset]").forEach((c) => c.addEventListener("click", () => {
-    if ($("#dReqBtn").dataset.busy) return;
-    const p = PRESETS[c.dataset.preset]; $("#dRes").value = p.resource; $("#dAct").value = p.action; $("#dCorrupt").value = p.corrupt; $("#dLedgerPol").checked = p.ledger;
-    doRequest($("#dReqBtn"));
-  }));
-  $("#dPatient").addEventListener("change", () => clearDecision("Send a request for this patient."));
-  $("#dPatients").addEventListener("click", (e) => { const b = e.target.closest("[data-req]"); if (b) { show("d-request", true); $("#dPatient").value = b.dataset.req; clearDecision("Send a request for this patient."); } });
+  $("#dPatient").addEventListener("change", () => clearDecision("Open this patient's record."));
+  $("#dPatients").addEventListener("click", (e) => { const b = e.target.closest("[data-req]"); if (b) { show("d-request", true); $("#dPatient").value = b.dataset.req; clearDecision("Open this patient's record."); } });
   // admin
+  $("#tReqBtn").addEventListener("click", (e) => testRequest(e.currentTarget));
+  $$(".chip[data-preset]").forEach((c) => c.addEventListener("click", () => {
+    if ($("#tReqBtn").dataset.busy) return;
+    const p = PRESETS[c.dataset.preset]; $("#tRes").value = p.resource; $("#tAct").value = p.action; $("#tCorrupt").value = p.corrupt; $("#tLedgerPol").checked = p.ledger;
+    testRequest($("#tReqBtn"));
+  }));
   $("#aShortcuts").addEventListener("click", (e) => { const b = e.target.closest("[data-go]"); if (b) show(b.dataset.go, true); });
   $("#dsLoadBtn").addEventListener("click", (e) => loadDatasetGo(e.currentTarget));
   $("#aNodes").addEventListener("click", async (e) => {

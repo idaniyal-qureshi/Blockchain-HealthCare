@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>HealthSafe</title>
-  <link rel="stylesheet" href="/static/styles.css">
+  <link rel="stylesheet" href="/static/styles.css?v=3">
   <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
 </head>
 <body>
@@ -56,7 +56,7 @@
       <div class="usercard" id="userCard"></div>
       <nav class="nav" id="nav" role="tablist" aria-label="Sections"></nav>
       <div class="side-bottom">
-        <div class="side-card"><span class="pill warnc">Baseline mode</span>
+        <div class="side-card hidden" id="baselineCard"><span class="pill warnc">Baseline mode</span>
           <p>Hao et al. (2025), reproduced as published. Two of its attacks succeed by design.</p></div>
         <button class="btn ghost wide" id="logoutBtn"><svg viewBox="0 0 24 24"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l-5-5 5-5M5 12h11"/></svg>Sign out</button>
       </div>
@@ -65,109 +65,95 @@
     <div class="main-col">
       <header class="topbar">
         <div><div class="eyebrow" id="viewEyebrow"></div><h1 id="viewTitle"></h1></div>
-        <div class="top-pills"><span class="pill soft" id="srcPill">–</span><span class="pill soft" id="nodesPill">–</span><span class="pill soft" id="chainPill">–</span></div>
+        <div class="top-pills hidden" id="topPills"><span class="pill soft" id="srcPill">–</span><span class="pill soft" id="nodesPill">–</span><span class="pill soft" id="chainPill">–</span></div>
       </header>
       <main>
-        <div id="dsBanner" class="callout banner-top hidden" role="status">The administrator loaded a new dataset: the ledger, pseudonyms and consent were rebuilt. <button class="btn" id="dsBannerReload">Reload page</button></div>
+        <div id="dsBanner" class="callout banner-top hidden" role="status"><span id="dsBannerText">HealthSafe was updated.</span> <button class="btn" id="dsBannerReload">Reload page</button></div>
         <div id="loading" class="loading glass hidden"><span class="spinner"></span><span id="loadingText">Loading&hellip;</span></div>
 
         <!-- ============================== PATIENT ============================== -->
         <section id="sec-p-home" class="panel">
           <div class="photo-banner">
             <img src="/static/art/patient.svg" alt="" class="art">
-            <div class="photo-banner-text"><span class="badge">Your wearable</span><h2 id="pHello"></h2>
-              <p id="pBannerText"></p></div>
+            <div class="photo-banner-text"><span class="badge">Your health</span><h2 id="pHello"></h2>
+              <p>Heart-rate readings from your wearable device.</p></div>
           </div>
-          <div class="card callout-card p-no-record hidden"><h3>Your record is not in the loaded dataset</h3><p class="muted why"></p><p class="muted">The administrator loaded a smaller dataset than there are patient accounts. Ask them to load more patients; this page updates on its own.</p></div>
+          <div class="card callout-card p-no-record hidden"><h3>Your record isn&rsquo;t available yet</h3><p class="muted">Please contact the HealthSafe administrator. This page updates on its own once your record is available.</p></div>
           <div class="stats p-needs-record" id="pStats"></div>
           <div class="card p-needs-record">
-            <div class="row head-row"><h3><span aria-hidden="true" class="ic i-rose">&#9829;</span>Heart rate on this device</h3><span class="pill ok">your record</span></div>
+            <div class="row head-row"><h3><span aria-hidden="true" class="ic i-rose">&#9829;</span>Heart rate</h3></div>
             <div id="pVitals" class="chart"></div>
             <div id="pVitalsNote" class="note"></div>
           </div>
         </section>
 
         <section id="sec-p-consent" class="panel">
-          <p class="lede">Your phone holds the two secret keys. Grant a hospital a consent token, define who may read what, and revoke
-            either at any time. Every change is written to the ledger through consensus.</p>
-          <div class="grid2">
+          <p class="lede">You decide which hospitals can see your record, what they can do with it, and for how long. You can withdraw access at any time.</p>
+          <div class="card p-needs-record">
+            <h3><span aria-hidden="true" class="ic i-violet">&#9919;</span>Who can see your record</h3>
+            <div class="scroll-x"><table class="tbl" id="pAccess"></table></div>
+          </div>
+          <div class="grid2 p-needs-record">
             <div class="card">
-              <h3><span aria-hidden="true" class="ic i-violet">&#9919;</span>Consent tokens <span class="tag">Eq. 5&ndash;7</span></h3>
-              <table class="tbl" id="pTokens"></table>
-              <div class="actions"><label class="inline">Give token to <select id="grantHosp"></select></label></div>
-              <div class="actions"><button class="btn primary" id="grantBtn">Give consent token</button></div>
-              <div class="danger-zone"><div><b>Revoke for every hospital</b><div class="sub">Issues a new secret: all tokens held today stop working.</div></div><button class="btn danger" id="revokeTokBtn">Revoke all tokens</button></div>
-            </div>
-            <div class="card">
-              <h3><span aria-hidden="true" class="ic i-mint">&#10010;</span>Define or revoke a policy</h3>
+              <h3><span aria-hidden="true" class="ic i-mint">&#10010;</span>Give a hospital access</h3>
               <div class="form">
                 <label>Hospital <select id="polEntity"></select></label>
-                <label>Role <select id="polRole"><option>doctor</option><option>nurse</option><option>auditor</option></select></label>
-                <label>Resource <select id="polRes"><option>EHR</option><option>audit_logs</option></select></label>
-                <label>Access <select id="polAccess"><option>read</option><option>write</option></select></label>
-                <label>Valid for (minutes) <input id="polTtl" type="number" min="1" max="525600" step="1" value="60"></label>
+                <label>Who <select id="polRole"><option value="doctor">Doctors</option><option value="nurse">Nurses</option><option value="auditor">Auditors</option></select></label>
+                <label>What <select id="polRes"><option value="EHR">Health record</option><option value="audit_logs">Access history</option></select></label>
+                <label>Permission <select id="polAccess"><option value="read">View</option><option value="write">Edit</option></select></label>
+                <label>For <select id="polTtl"><option value="3600">1 hour</option><option value="86400" selected>1 day</option><option value="604800">1 week</option><option value="2592000">30 days</option><option value="31536000">1 year</option></select></label>
               </div>
-              <div class="actions"><button class="btn primary" id="polDefBtn">Write policy</button>
-                <button class="btn danger" id="polRevBtn">Revoke this hospital&rsquo;s policy</button></div>
-              <p class="note"><b>How the paper decides:</b> a hospital is governed by its latest-expiring policy (Eq.&nbsp;10), whatever it covers, so a new policy for a hospital replaces the current one. The role is recorded but not checked.</p>
-              <div id="pLedger" class="note"></div>
+              <div class="actions"><button class="btn primary" id="shareBtn">Give access</button></div>
+              <p class="note">Giving a hospital new access replaces the access it had before.</p>
+            </div>
+            <div class="card">
+              <h3><span aria-hidden="true" class="ic i-rose">&#10007;</span>Stop sharing</h3>
+              <p class="muted">Withdraw a hospital&rsquo;s access from the table above, or stop sharing with every hospital at once.</p>
+              <div class="danger-zone"><div><b>Stop sharing with every hospital</b><div class="sub">No hospital can open your record until you give access again.</div></div><button class="btn danger" id="revokeTokBtn">Stop sharing</button></div>
             </div>
           </div>
-          <div class="card">
-            <h3><span aria-hidden="true" class="ic i-sky">&#9776;</span>Your access policies <span class="tag">Eqs. 8&ndash;10</span></h3>
-            <div class="scroll"><table class="tbl" id="pPolicies"></table></div>
+          <div class="card p-needs-record">
+            <h3><span aria-hidden="true" class="ic i-sky">&#9776;</span>All permissions you have given</h3>
+            <div class="scroll scroll-x"><table class="tbl" id="pPolicies"></table></div>
           </div>
         </section>
 
         <section id="sec-p-history" class="panel">
-          <p class="lede">Everything the ledger records about you. Entries carry only your pseudonym: the ledger does not say which hospital
-            asked (Sec. 4.5), so this is what anyone reading the chain can see too.</p>
-          <div class="card">
-            <div class="row head-row"><h3><span aria-hidden="true" class="ic i-violet">&#9939;</span>On-chain events</h3><span id="pHistNote" class="pill soft"></span></div>
+          <p class="lede">Changes you made to your sharing, and every time a hospital asked for your record.</p>
+          <div class="card p-needs-record">
+            <div class="row head-row"><h3><span aria-hidden="true" class="ic i-violet">&#9201;</span>Activity</h3><span id="pHistNote" class="pill soft"></span></div>
             <div class="scroll tall"><table class="tbl" id="pHist"></table></div>
           </div>
         </section>
 
         <!-- ============================== DOCTOR ============================== -->
         <section id="sec-d-request" class="panel">
-          <p class="lede">Request a patient&rsquo;s record for your hospital. Access needs the authorisation proof (Algorithms 3&ndash;4), the
-            patient&rsquo;s policy (Eqs. 8&ndash;10) <em>and</em> a consensus commit of the decision; only then is the record decrypted.</p>
-          <div class="presets">
-            <button class="chip" data-preset="valid">Valid request</button>
-            <button class="chip" data-preset="corrupt">2 corrupted transmissions</button>
-            <button class="chip" data-preset="corrupt3">k corrupted (gives up)</button>
-            <button class="chip" data-preset="write">Write not permitted</button>
-            <button class="chip" data-preset="audit">Ask for audit logs</button>
-            <button class="chip warn" data-preset="ledger">Attack: ledger-copied policy token</button>
-          </div>
+          <p class="lede">Open a patient&rsquo;s record. You can open records that the patient has shared with your hospital.</p>
           <div class="grid-side">
             <div class="card">
               <h3><span aria-hidden="true" class="ic i-violet">&#9998;</span>Request</h3>
               <div class="form one">
                 <label class="full">Patient <select id="dPatient"></select></label>
-                <label>Resource <select id="dRes"><option>EHR</option><option>audit_logs</option></select></label>
-                <label>Action <select id="dAct"><option>read</option><option>write</option></select></label>
-                <label>Corrupted transmissions <input id="dCorrupt" type="number" min="0" max="5" value="0"></label>
-                <label class="check"><input type="checkbox" id="dLedgerPol"> Submit a policy token copied from the ledger</label>
+                <label>Record <select id="dRes"><option value="EHR">Health record</option><option value="audit_logs">Access history</option></select></label>
+                <label>Action <select id="dAct"><option value="read">View</option><option value="write">Edit</option></select></label>
               </div>
               <div class="note" id="dAsWho"></div>
-              <div class="actions"><button class="btn primary wide" id="dReqBtn">Request record</button></div>
+              <div class="actions"><button class="btn primary wide" id="dReqBtn">Open record</button></div>
             </div>
             <div class="card">
-              <h3><span aria-hidden="true" class="ic i-sky">&#10003;</span>Decision</h3>
-              <div id="dResult" class="result empty" aria-live="polite">Pick a scenario above, or build a request and send it.</div>
+              <h3><span aria-hidden="true" class="ic i-sky">&#10003;</span>Result</h3>
+              <div id="dResult" class="result empty" aria-live="polite">Choose a patient and open their record.</div>
             </div>
           </div>
           <div class="card">
-            <h3><span aria-hidden="true" class="ic i-rose">&#9829;</span>Released record</h3>
-            <div id="dChart" class="chart"><div class="note">Nothing released yet.</div></div>
+            <h3><span aria-hidden="true" class="ic i-rose">&#9829;</span>Record</h3>
+            <div id="dChart" class="chart"><div class="note">No record open.</div></div>
             <div id="dChartNote" class="note"></div>
           </div>
         </section>
 
         <section id="sec-d-patients" class="panel">
-          <p class="lede">Patients in the loaded dataset, and whether your hospital currently holds a valid consent token and a policy for
-            each. You can still request any of them; the system will refuse what the patient has not consented to.</p>
+          <p class="lede">Patients, and whether your hospital can currently open their health record.</p>
           <div class="card"><div class="scroll tall scroll-x"><table class="tbl" id="dPatients"></table></div></div>
         </section>
 
@@ -181,7 +167,7 @@
           <div class="photo-banner">
             <img src="/static/art/hospital.svg" alt="" class="art">
             <div class="photo-banner-text"><span class="badge" id="hCode"></span><h2 id="hName"></h2>
-              <p>One member of the hospital consortium: it runs a validator node and requests records on its staff&rsquo;s behalf.</p></div>
+              <p>Patients who share their records with you, your staff, and the requests they make.</p></div>
           </div>
           <div class="stats" id="hStats"></div>
           <div class="grid2">
@@ -191,14 +177,13 @@
         </section>
 
         <section id="sec-h-patients" class="panel">
-          <p class="lede">Every patient in the loaded dataset and what they have consented to for your hospital. Your staff can read a record only with a valid token <em>and</em> a policy in force. This view is read-only and refreshes every 15 seconds.</p>
+          <p class="lede">Every patient and the access they have given your hospital. This view refreshes every 15 seconds.</p>
           <div id="hPatientsNote"></div>
           <div class="card"><div class="scroll-x"><table class="tbl" id="hPatients"></table></div><div class="note h-updated"></div></div>
         </section>
 
         <section id="sec-h-log" class="panel">
-          <p class="lede">Your hospital&rsquo;s own record of who requested what. It is kept off-chain: the ledger&rsquo;s audit entries carry
-            only patient pseudonyms, not hospitals or staff.</p>
+          <p class="lede">Every record request made by your staff.</p>
           <div class="card"><div class="row head-row"><span class="note" id="hLogNote"></span><span class="note h-updated"></span></div><div class="scroll xl"><table class="tbl" id="hLog"></table></div></div>
         </section>
 
@@ -249,6 +234,43 @@
             <div class="scroll"><table class="tbl" id="dsPatientsTbl"></table></div>
             <div class="note warnline" id="dsWarn"></div>
             <div id="dsParts" class="note"></div>
+          </div>
+        </section>
+
+        <section id="sec-a-requests" class="panel">
+          <p class="lede">Why each access request was granted or refused. Clinicians, hospitals and patients only see whether a request was
+            granted; the checks behind it (Algorithms 3&ndash;4, Eqs. 8&ndash;10, the consensus commit) are shown only here.</p>
+          <div class="card">
+            <h3><span aria-hidden="true" class="ic i-violet">&#9998;</span>Test a request</h3>
+            <div class="presets">
+              <button class="chip" data-preset="valid">Valid request</button>
+              <button class="chip" data-preset="corrupt">2 corrupted transmissions</button>
+              <button class="chip" data-preset="corrupt3">k corrupted (gives up)</button>
+              <button class="chip" data-preset="write">Write not permitted</button>
+              <button class="chip" data-preset="audit">Ask for audit logs</button>
+              <button class="chip warn" data-preset="ledger">Attack: ledger-copied policy token</button>
+            </div>
+            <div class="grid-side">
+              <div>
+                <div class="form one">
+                  <label>Hospital <select id="tHosp"></select></label>
+                  <label class="full">Patient <select id="tPatient"></select></label>
+                  <label>Resource <select id="tRes"><option>EHR</option><option>audit_logs</option></select></label>
+                  <label>Action <select id="tAct"><option>read</option><option>write</option></select></label>
+                  <label>Corrupted transmissions <input id="tCorrupt" type="number" min="0" max="5" value="0"></label>
+                  <label class="check"><input type="checkbox" id="tLedgerPol"> Submit a policy token copied from the ledger</label>
+                </div>
+                <div class="actions"><button class="btn primary wide" id="tReqBtn">Send test request</button></div>
+                <p class="note"><b>How the paper decides:</b> a hospital is governed by its latest-expiring policy (Eq.&nbsp;10), whatever it
+                  covers, so a patient&rsquo;s new policy for a hospital replaces the current one. The policy&rsquo;s role is recorded but not
+                  checked: any staff member of the hospital passes. Both are left as published.</p>
+              </div>
+              <div id="tResult" class="result empty" aria-live="polite">Pick a scenario, or build a request and send it.</div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="row head-row"><h3><span aria-hidden="true" class="ic i-sky">&#9776;</span>Every request, with the reason</h3><span class="note" id="aReqNote"></span></div>
+            <div class="scroll xl scroll-x"><table class="tbl" id="aReqs"></table></div>
           </div>
         </section>
 
@@ -336,6 +358,6 @@
   </div>
 
   <div id="toast" class="toast hidden" role="status"></div>
-  <script src="/static/app.js"></script>
+  <script src="/static/app.js?v=3"></script>
 </body>
 </html>

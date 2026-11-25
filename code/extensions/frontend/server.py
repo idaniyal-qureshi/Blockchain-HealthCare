@@ -7,12 +7,17 @@ Portals: /patient, /doctor, /hospital, /admin (each needs an account of that rol
 The API drives one DemoSystem (system.py), built from the unchanged base modules in code/v2_components. Portal logins (auth.py) only
 decide who may use which screen; the paper's own access control still decides every record release. Listens on 127.0.0.1 only: a
 local demo with deliberately insecure (paper-faithful) cryptography, not a deployable service.
+
+Abstraction: the patient, clinician and hospital routes return only what an ordinary hospital system would show (views.py): who
+has access and whether a request was granted. Why a check passed or failed, and anything about the ledger, nodes, pseudonyms or
+the dataset, is returned only on admin routes.
 """
 import os, sys, time, pathlib, threading, subprocess
 HERE = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 import system as S                                                # also puts code/v2_components and the data layer on sys.path
 import auth
+import views as V
 
 from typing import Literal
 from fastapi import Depends, FastAPI, HTTPException, Request, Response
@@ -66,6 +71,8 @@ async def guard(request: Request, call_next):
             return JSONResponse({"detail": "cross-origin request refused"}, 403)
     resp = await call_next(request)
     for k, v in SECURITY_HEADERS.items(): resp.headers.setdefault(k, v)
+    if not request.url.path.startswith(("/api/", "/figures/")):    # pages and static files: always revalidate, so an updated
+        resp.headers["Cache-Control"] = "no-cache"                # app.js is never mixed with a stale cached copy
     return resp
 JOB = dict(running=False, started=None, finished=None, returncode=None, log=[])
 ACCOUNTS = auth.Accounts()
@@ -131,9 +138,9 @@ def me(request: Request):
     out = ACCOUNTS.public(u)
     if u["role"] == "patient" and STATE["sys"] is not None:
         try:
-            p = STATE["sys"].pseud_at(u["patient_index"]); out.update(pseud=p, label=STATE["sys"].label_of[p])
-        except KeyError as e:
-            out["record_error"] = str(e).strip("'")
+            out["label"] = STATE["sys"].label_of[STATE["sys"].pseud_at(u["patient_index"])]
+        except KeyError:
+            out["record_missing"] = True                          # the admin sees why (dataset page); the patient does not
     return out
 
 
@@ -141,8 +148,7 @@ def me(request: Request):
 def status():
     """Public: is the system up, and which usernames exist per portal (no passwords)."""
     s = STATE["sys"]
-    return dict(ready=s is not None, building=STATE["building"], error=STATE["error"],
-                source=None if s is None else s.cfg["source"], hospitals=ACCOUNTS.hospitals,
+    return dict(ready=s is not None, building=STATE["building"], hospitals=ACCOUNTS.hospitals,
                 demo_users={r: ACCOUNTS.usernames(r) for r in auth.ROLES})
 
 
@@ -153,8 +159,9 @@ def _ctx(s):
 
 @app.get("/api/context")
 def context(u=Depends(need(*auth.ROLES))):
-    """Small shared header data for any signed-in portal."""
-    return _ctx(system())
+    """Shared header data. Only the admin gets the ledger, node and dataset state."""
+    ctx = _ctx(system())
+    return ctx if u["role"] == "admin" else V.context(ctx)
 
 
 # ------------------------------------------------------------------ patient portal (own record only)
@@ -171,38 +178,64 @@ class EntityIn(BaseModel):
     resource: RESOURCE = "EHR"
 
 
+class HospitalIn(BaseModel):
+    hospital: HOSPITAL = "hospA"
+
+
+OK = dict(ok=True)                                                # patient changes: no ledger or consensus detail
+
+
 def _my_pseud(u):
     return _call(system().pseud_at, u["patient_index"])
 
 
 @app.get("/api/patient")
 def patient(u=Depends(need("patient"))):
-    return _call(system().patient_view, _my_pseud(u))
+    return V.patient(_call(system().patient_view, _my_pseud(u)))
 
 
 @app.get("/api/patient/history")
 def patient_history(u=Depends(need("patient"))):
-    return _call(system().patient_history, _my_pseud(u))
+    return V.patient_activity(system(), _my_pseud(u))
+
+
+@app.post("/api/patient/share")
+def share(body: PolicyIn, u=Depends(need("patient"))):
+    """Give a hospital access: the consent token if it does not hold a valid one yet (Algs 3-4), then the policy (Eqs 8-9)."""
+    s, p = system(), _my_pseud(u)
+    if not s.token_valid(body.entity, p): _call(s.grant_token, p, body.entity)
+    _call(s.define_policy, p, body.entity, body.role, body.resource, body.access, body.ttl_s)
+    return OK
+
+
+@app.post("/api/patient/withdraw")
+def withdraw(body: HospitalIn, u=Depends(need("patient"))):
+    """Withdraw every active permission a hospital holds (Sec 4.3.3 revocation, per resource)."""
+    s, p, now = system(), _my_pseud(u), time.time()
+    live = {e["pi"][2] for e in s.ps.pol.get(p, []) if e["pi"][0] == body.hospital and e["pi"][4] > now}
+    if not live: raise HTTPException(400, "this hospital has no access to withdraw")
+    for res in sorted(live): _call(s.revoke_policy, p, body.hospital, res)
+    return OK
 
 
 @app.post("/api/patient/grant")
 def grant(body: EntityIn, u=Depends(need("patient"))):
-    return _call(system().grant_token, _my_pseud(u), body.hospital)
+    _call(system().grant_token, _my_pseud(u), body.hospital); return OK
 
 
 @app.post("/api/patient/policy")
 def policy(body: PolicyIn, u=Depends(need("patient"))):
-    return _call(system().define_policy, _my_pseud(u), body.entity, body.role, body.resource, body.access, body.ttl_s)
+    _call(system().define_policy, _my_pseud(u), body.entity, body.role, body.resource, body.access, body.ttl_s); return OK
 
 
 @app.post("/api/patient/revoke-token")
 def revoke_token(u=Depends(need("patient"))):
-    return _call(system().revoke_token, _my_pseud(u))
+    _call(system().revoke_token, _my_pseud(u)); return OK
 
 
 @app.post("/api/patient/revoke-policy")
 def revoke_policy(body: EntityIn, u=Depends(need("patient"))):
-    return _call(system().revoke_policy, _my_pseud(u), body.hospital, body.resource)
+    _call(system().revoke_policy, _my_pseud(u), body.hospital, body.resource); return OK
 
 
 # ------------------------------------------------------------------ doctor portal (always as the doctor's own hospital)
@@ -210,32 +243,34 @@ class RequestIn(BaseModel):
     pseud: str = Field(max_length=64)
     resource: RESOURCE = "EHR"
     action: ACCESS = "read"
+
+
+class TestRequestIn(RequestIn):                                   # admin only: the scenarios and attacks
+    hospital: HOSPITAL = "hospA"
     corrupt_first: int = Field(0, ge=0, le=5)
     policy_from_ledger: bool = False
 
 
 @app.get("/api/doctor/patients")
 def doctor_patients(u=Depends(need("doctor"))):
-    return system().doctor_patients(u["hospital"])
+    return V.doctor_patients(system().doctor_patients(u["hospital"]))
 
 
 @app.post("/api/doctor/request")
 def request_access(body: RequestIn, u=Depends(need("doctor"))):
-    if not 0 <= body.corrupt_first <= 5: raise HTTPException(400, "corrupt_first must be 0-5")
     by = dict(username=u["username"], name=u["name"], role=u["staff_role"])
-    return _call(system().request_access, u["hospital"], body.pseud, body.resource, body.action, body.corrupt_first,
-                 body.policy_from_ledger, by)
+    return V.doctor_result(_call(system().request_access, u["hospital"], body.pseud, body.resource, body.action, 0, False, by))
 
 
 @app.get("/api/doctor/history")
 def doctor_history(u=Depends(need("doctor"))):
-    return system().requests_by(u["username"])
+    return [V.request_row(r) for r in system().requests_by(u["username"])]
 
 
 # ------------------------------------------------------------------ hospital portal (own hospital only)
 @app.get("/api/hospital")
 def hospital(u=Depends(need("hospital"))):
-    v = system().hospital_view(u["hospital"])
+    v = V.hospital(system().hospital_view(u["hospital"]))
     v["staff"] = ACCOUNTS.staff(u["hospital"]); v["name"] = ACCOUNTS.hospitals.get(u["hospital"], {}).get("name", u["hospital"])
     return v
 
@@ -326,6 +361,20 @@ def node(i: int, action: str, u=ADMIN):
 @app.get("/api/admin/audit")
 def audit(u=ADMIN):
     return system().audit()
+
+
+@app.get("/api/admin/requests")
+def all_requests(u=ADMIN):
+    """Every access request from every hospital, with the checks and the reason for the decision."""
+    return system().all_requests()
+
+
+@app.post("/api/admin/request")
+def test_request(body: TestRequestIn, u=ADMIN):
+    """Send a request as any hospital, including the corrupted-transmission and ledger-copied-token scenarios; full detail back."""
+    by = dict(username=u["username"], name=u["name"], role="admin test")
+    return _call(system().request_access, body.hospital, body.pseud, body.resource, body.action, body.corrupt_first,
+                 body.policy_from_ledger, by)
 
 
 class NIn(BaseModel):

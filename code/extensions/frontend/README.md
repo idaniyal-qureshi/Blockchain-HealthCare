@@ -26,10 +26,18 @@ Open <http://127.0.0.1:8000>. The landing page links to the four portals. Each p
 
 | Portal | URL | Demo accounts | What it does |
 |---|---|---|---|
-| **Patient** | `/patient` | `patient1` … `patient8` | Shows the wearable's vitals: the corrected heart rate, quarantined readings marked, and the ECG truth on WildPPG. The patient grants or revokes a hospital's consent token (Algs 3-4) and defines or revokes policies (Eqs 8-10). The ledger-history screen shows everything the chain records about them, which is pseudonym only. |
-| **Clinician** | `/doctor` | `dr.sana`, `dr.hamza`, `nurse.amna` (hospA); `dr.bilal` (hospB) | Requests a record, **always as the clinician's own hospital**. The decision is shown step by step: the token check with retries, the policy check, the consensus commit, then decryption. It also has a patient list with consent status and the clinician's request history. |
-| **Hospital** | `/hospital` | `hospa.admin`, `hospb.admin` | Covers one hospital: its consenting patients and the policies it holds, its staff, and its access log. The access log is the hospital's own off-chain record of who asked for what, because the ledger stores only pseudonyms. |
-| **Admin** | `/admin` | `admin` | Runs the consortium. **Loads the dataset** (synthetic or WildPPG, with patients, readings and cluster size), which rebuilds the ledger. It also covers: crashing, recovering or compromising nodes; browsing the ledger and tampering with or restoring blocks; the audit trail and contract events; enabling or disabling portal accounts; the attack and benchmark lab; and the full paper experiments with their figures. |
+| **Patient** | `/patient` | `patient1` … `patient8` | Heart-rate readings from the wearable. **Sharing:** give a hospital access (who, what, view or edit, for how long), withdraw it, or stop sharing with everyone. **Activity:** the patient's own changes and every request for their record, granted or declined. |
+| **Clinician** | `/doctor` | `dr.sana`, `dr.hamza`, `nurse.amna` (hospA); `dr.bilal` (hospB) | Opens a patient's record, **always as the clinician's own hospital**. The answer is granted (with the record), denied, or try again later. Also a patient list showing which records the clinician can open, and their request history. |
+| **Hospital** | `/hospital` | `hospa.admin`, `hospb.admin` | One hospital: the patients who share with it and their permissions, its staff, and its access log (who asked for what, and whether it was granted). |
+| **Admin** | `/admin` | `admin` | Runs the consortium. **Access requests:** every request with its checks and the reason for the decision, plus a test console with the paper's scenarios and attacks. **Loads the dataset** (synthetic or WildPPG, with patients, readings and cluster size), which rebuilds the ledger. It also covers: crashing, recovering or compromising nodes; browsing the ledger and tampering with or restoring blocks; the audit trail and contract events; enabling or disabling portal accounts; the attack and benchmark lab; and the full paper experiments with their figures. |
+
+### Who sees what
+
+Patients, clinicians and hospitals use HealthSafe like any hospital system. They see who has access, for how long, and whether a
+request was granted. They never see **why** a request was decided (token, policy, consensus commit, integrity check), and nothing
+about the ledger, validator nodes, pseudonyms, the dataset or the paper. This is enforced on the server: `views.py` reduces the
+system layer's output before it leaves the server for those roles, so the detail is not in their API responses either. All of
+it stays in the admin portal.
 
 The demo passwords are in `demo_accounts.json`. They are demo-only test values: the server hashes them with PBKDF2-SHA256 at
 start-up and never returns them. Patient accounts map to patients **by position**, so `patient1` is the first patient of whichever
@@ -64,7 +72,7 @@ Six parallel testers (security, load, and one per portal) found issues, which we
 - **Release:** a record is released only after the access decision is committed to the ledger. With no quorum, requests are refused before any check runs. A ciphertext that fails its integrity check after a tamper is reported, not released.
 - **Load:** chain validity, the audit trail and the identity-leak check are worked out incrementally rather than by re-hashing the whole chain on every page. The ledger and history pages send at most a few hundred rows, and lab benchmarks run one at a time. At 10,000 requests, the ledger page fell from 382 ms (1.5 MB) to 15 ms (48 KB). A clinician's request while six admins hammer the heavy pages fell from 4-5 s to about 40 ms.
 
-**Left as the paper has them, but explained in the UI:**
+**Left as the paper has them, and explained in the admin portal:**
 
 - The policy's *role* is not checked.
 - A hospital is governed by its latest-expiring policy (Eq. 10), so a new policy replaces the current one whatever it covers.
@@ -76,6 +84,7 @@ Six parallel testers (security, load, and one per portal) found issues, which we
 - `server.py`: the FastAPI app. It serves the API under `/api` (with a role check on every route), the pages `/`, `/patient`, `/doctor`, `/hospital` and `/admin`, and the figures.
 - `auth.py`: demo accounts, password hashing and sessions.
 - `demo_accounts.json`: the demo account seed and the hospital names.
+- `views.py`: what the patient, clinician and hospital portals receive (plain outcomes; no reasons, ledger or dataset detail).
 - `system.py`: `DemoSystem`, the stateful baseline. It also holds the hospital, patient and doctor views and the lab functions. It contains no web code.
 - `static/index.html`: the landing page.
 - `static/portal.html` + `app.js`: the four portals. The URL picks which one is shown.
@@ -84,6 +93,8 @@ Six parallel testers (security, load, and one per portal) found issues, which we
 - `tests/test_frontend.py`: tests for the system layer and the API, including the login and role rules.
 
 ## Tests
+
+For a step-by-step manual checklist (what each portal should and should not show), see [TESTING.md](TESTING.md).
 
 ```powershell
 pip install pytest httpx
