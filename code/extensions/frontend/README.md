@@ -94,6 +94,8 @@ Six parallel testers (security, load, and one per portal) found issues, which we
 
 ## Tests
 
+For a step-by-step manual checklist (what each portal should and should not show), see [TESTING.md](TESTING.md).
+
 ```powershell
 pip install pytest httpx
 python -m pytest code/extensions/frontend/tests -q
