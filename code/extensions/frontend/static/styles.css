@@ -62,7 +62,6 @@ h1 { margin: 2px 0 0; font-size: 28px; letter-spacing: -.6px; font-weight: 800; 
 main { padding: 0 6px 40px; }
 .panel { display: none; animation: rise .25s ease; }
 .panel.active { display: block; }
-@keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 .loading { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 34px; border-radius: var(--radius); color: var(--muted); margin-bottom: 18px; }
 .spinner { width: 18px; height: 18px; border-radius: 50%; border: 2.5px solid var(--violet-soft); border-top-color: var(--violet); animation: spin .8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
@@ -431,3 +430,73 @@ a.btn { text-decoration: none; }
   .photo-banner-text { left: 20px; right: 20px; }
 }
 @media (max-width: 560px) { .pcards { grid-template-columns: 1fr; } }
+
+/* admin: the reason behind each access decision */
+.why-cell { min-width: 260px; max-width: 420px; font-size: 12.5px; color: var(--muted, #6e6b92); white-space: normal; }
+
+/* ================================================================ motion: button feedback and smooth transitions */
+:root { --ease: cubic-bezier(.2, .8, .2, 1); --spring: cubic-bezier(.34, 1.56, .64, 1); }
+html { scroll-behavior: smooth; }
+
+/* every clickable control: a lift on hover, a press on click, and a ripple from the pointer (app.js adds the ripple) */
+.btn, .chip, .tab, .shortcut, .node button, .src-card, .demo-users .chip { position: relative; overflow: hidden; -webkit-tap-highlight-color: transparent;
+  transition: transform .18s var(--ease), box-shadow .22s var(--ease), background-color .2s var(--ease), color .2s var(--ease), border-color .2s var(--ease), opacity .2s var(--ease); }
+.btn:hover:not(:disabled), .chip:hover:not(:disabled) { transform: translateY(-1px); }
+.btn:active:not(:disabled), .chip:active:not(:disabled), .node button:active, .shortcut:active { transform: scale(.96); transition-duration: .08s; }
+.tab:hover:not(.active) { transform: translateX(3px); }
+.tab:active { transform: scale(.97); }
+.tab.active { animation: tab-in .35s var(--spring); }
+@keyframes tab-in { from { transform: scale(.94); } to { transform: none; } }
+.ripple { position: absolute; border-radius: 50%; pointer-events: none; transform: scale(0); opacity: .35; background: currentColor;
+  animation: ripple .55s var(--ease) forwards; }
+@keyframes ripple { to { transform: scale(1); opacity: 0; } }
+
+/* a button that is waiting on the server shows a small spinner */
+.btn.is-busy { cursor: wait; }
+.btn.is-busy::before { content: ""; width: 13px; height: 13px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent;
+  animation: spin .7s linear infinite; flex: none; }
+
+/* screens: the content arrives in a short cascade */
+.panel.active > * { animation: rise .42s var(--ease) backwards; }
+.panel.active > *:nth-child(2) { animation-delay: .05s; }
+.panel.active > *:nth-child(3) { animation-delay: .1s; }
+.panel.active > *:nth-child(4) { animation-delay: .15s; }
+.panel.active > *:nth-child(n+5) { animation-delay: .2s; }
+.panel { animation: none; }
+/* entrances only move content, never hide it: fading frosted-glass (backdrop-filter) cards stalls the browser and left screens blank */
+@keyframes rise { from { transform: translateY(10px); } to { transform: none; } }
+
+/* cards and tiles lift gently under the pointer */
+.card, .stat, .staff-card, .node { transition: transform .25s var(--ease), box-shadow .25s var(--ease), border-color .25s var(--ease); }
+.stat:hover, .staff-card:hover, .node:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(76, 64, 170, .12); }
+.shortcut:hover { transform: translateY(-3px); box-shadow: 0 14px 30px rgba(76, 64, 170, .14); }
+
+/* results: a fresh answer pops in, and its steps follow one by one */
+.result.reveal { animation: pop .4s var(--spring) both; }
+@keyframes pop { from { transform: translateY(8px) scale(.985); } to { transform: none; } }
+.result.reveal .verdict .pill { animation: pop .45s var(--spring) .08s both; }
+.result.reveal .steps li { animation: rise .35s var(--ease) both; }
+.result.reveal .steps li:nth-child(2) { animation-delay: .08s; } .result.reveal .steps li:nth-child(3) { animation-delay: .16s; } .result.reveal .steps li:nth-child(4) { animation-delay: .24s; }
+
+/* charts draw themselves */
+.chart svg path.draw { stroke-dasharray: 1; stroke-dashoffset: 1; animation: draw 1s var(--ease) forwards; }
+.chart svg path.fade { animation: fade .8s var(--ease) both; }
+@keyframes draw { to { stroke-dashoffset: 0; } }
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+
+/* toast slides in and out */
+.toast { transition: transform .32s var(--spring), opacity .25s var(--ease); transform: translateY(20px); opacity: 0; }
+.toast.show { transform: none; opacity: 1; }
+
+/* small things */
+.pill { transition: background-color .25s var(--ease), color .25s var(--ease); }
+.login-card { animation: pop .5s var(--spring) both; }
+.login-photo-text > * { animation: rise .6s var(--ease) both; }
+.login-photo-text > *:nth-child(2) { animation-delay: .08s; } .login-photo-text > *:nth-child(3) { animation-delay: .16s; }
+.callout, .form-err { animation: rise .3s var(--ease) both; }
+select, input { transition: border-color .2s var(--ease), box-shadow .2s var(--ease), background-color .2s var(--ease); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-delay: 0s !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+  .ripple { display: none; }
+}

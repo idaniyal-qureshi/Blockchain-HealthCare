@@ -175,21 +175,24 @@ def test_roles_are_enforced(srv):
 
 def test_patient_sees_only_own_record(srv):
     pat = client(srv, "patient2", "patient")
-    me = pat.get("/api/auth/me").json()
-    assert me["pseud"] == srv.STATE["sys"].pseud_at(1)
-    assert pat.get("/api/patient").json()["pseud"] == me["pseud"]
-    assert client(srv, "patient8", "patient").get("/api/patient").status_code == 400   # only 3 patients loaded
+    sy = srv.STATE["sys"]; me = pat.get("/api/auth/me").json()
+    assert me["label"] == sy.label_of[sy.pseud_at(1)] and "pseud" not in me
+    assert pat.get("/api/patient").json()["label"] == me["label"]
+    p8 = client(srv, "patient8", "patient")                                  # only 3 patients loaded
+    assert p8.get("/api/auth/me").json()["record_missing"] and p8.get("/api/patient").status_code == 400
 
 
 def test_doctor_requests_as_own_hospital(srv):
     p = srv.STATE["sys"].pseud_at(0)
     a = client(srv, "dr.sana", "doctor").post("/api/doctor/request", json=dict(pseud=p)).json()
     b = client(srv, "dr.bilal", "doctor").post("/api/doctor/request", json=dict(pseud=p, hospital="hospA")).json()
-    assert a["granted"] and a["hospital"] == "hospA"
-    assert not b["granted"] and b["hospital"] == "hospB"                    # the body cannot pick another hospital
+    assert a["status"] == "granted" and a["record"]["hr"]
+    assert b["status"] == "denied" and "record" not in b                    # the body cannot pick another hospital
+    log = client(srv, "admin", "admin").get("/api/admin/requests").json()["requests"]
+    assert {r["by"]["username"]: r["hospital"] for r in log[:2]} == {"dr.bilal": "hospB", "dr.sana": "hospA"}
     h = client(srv, "hospa.admin", "hospital").get("/api/hospital").json()
     assert h["hospital"] == "hospA" and any(r["by"]["username"] == "dr.sana" for r in h["requests"])
-    assert all(r["hospital"] == "hospA" for r in h["requests"])
+    assert not any(r["by"]["username"] == "dr.bilal" for r in h["requests"])
 
 
 def test_admin_dataset_users_and_disable(srv):
@@ -282,3 +285,39 @@ def test_denial_reasons_and_live_policy_flag(sy):
     assert not sy.doctor_patients("hospA")[0]["policy_held"]
     assert not sy.hospital_view("hospA")["patients"][0]["readable"]
     with pytest.raises(KeyError): sy.grant_token(p, "nowhere")
+
+
+def test_only_the_admin_sees_why_and_the_ledger(srv):
+    """Patients, clinicians and hospitals get plain outcomes; reasons, checks, ledger, nodes and dataset are admin-only."""
+    sy = srv.STATE["sys"]; p = sy.pseud_at(0)
+    doc = client(srv, "dr.sana", "doctor")
+    r = doc.post("/api/doctor/request", json=dict(pseud=p, action="write", corrupt_first=5, policy_from_ledger=True)).json()
+    assert r["status"] == "denied"                                          # write not allowed; attack knobs ignored
+    assert sy.requests[-1]["corrupt_first"] == 0 and not sy.requests[-1]["ledger_copied"]
+    pat = client(srv, "patient1", "patient"); hos = client(srv, "hospa.admin", "hospital")
+    seen = [r, doc.get("/api/doctor/patients").json(), doc.get("/api/doctor/history").json(), doc.get("/api/context").json(),
+            pat.get("/api/patient").json(), pat.get("/api/patient/history").json(), pat.get("/api/context").json(),
+            hos.get("/api/hospital").json(), hos.get("/api/context").json(), pat.get("/api/auth/me").json()]
+    text = json.dumps(seen)
+    for key in ("reason", "token", "policy", "ledger", "block", "nodes", "chain_valid", "source", "pseud", "attempts", "governing", "held_by"):
+        assert f'"{key}' not in text, key
+    adm = client(srv, "admin", "admin")
+    full = adm.get("/api/admin/requests").json()["requests"][0]
+    assert "write on EHR" in full["reason"] and full["outcome"] == "denied" and "block" in full
+    t = adm.post("/api/admin/request", json=dict(hospital="hospA", pseud=p, policy_from_ledger=True)).json()
+    assert t["granted"] and t["policy"]["source"] == "copied from the ledger"   # the paper flaw, shown to the admin only
+    assert "nodes" in adm.get("/api/context").json()
+
+
+def test_patient_share_and_withdraw(srv):
+    pat = client(srv, "patient2", "patient")
+    hb = lambda: next(h for h in pat.get("/api/patient").json()["hospitals"] if h["hospital"] == "hospB")
+    assert not hb()["has_access"]
+    assert pat.post("/api/patient/share", json=dict(entity="hospB", ttl_s=86400)).json() == {"ok": True}
+    assert hb()["has_access"] and hb()["current"]["status"] == "active"
+    assert client(srv, "dr.bilal", "doctor").post("/api/doctor/request", json=dict(pseud=srv.STATE["sys"].pseud_at(1))).json()["status"] == "granted"
+    assert pat.post("/api/patient/withdraw", json=dict(hospital="hospB")).status_code == 200
+    assert not hb()["has_access"] and pat.post("/api/patient/withdraw", json=dict(hospital="hospB")).status_code == 400
+    texts = [e["text"] for e in pat.get("/api/patient/history").json()["events"]]
+    assert "You gave a hospital access" in texts and "You withdrew a hospital's access" in texts
+    assert any(t.startswith("A hospital was allowed to view") for t in texts)
